@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบคำนวณโอที (AI V.72 Full Fixed)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/th.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+
+
+
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+        }
+
+        .new-data {
+            animation: pulse-green 2s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% {
+                background-color: #dcfce7;
+            }
+
+            50% {
+                background-color: #bbf7d0;
+            }
+
+            100% {
+                background-color: #dcfce7;
+            }
+        }
+
+        /* Toast Notification */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 10000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.5s, bottom 0.5s;
+        }
+
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+
+        /* Tab Styles */
+        .tab-btn.active {
+            border-bottom: 2px solid #4f46e5;
+            color: #4f46e5;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* A4 Paper */
+        .a4-paper {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            margin: 20px auto;
+            padding: 10mm 15mm;
+            /* slightly reduced top/bottom padding */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            color: black;
+            font-family: 'Sarabun', sans-serif;
+            box-sizing: border-box;
+        }
+
+        /* Form Specific Table */
+        .form-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+            table-layout: fixed;
+        }
+
+        .form-table th,
+        .form-table td {
+            border: 1px solid black;
+            padding: 4px;
+            line-height: 1.2;
+            vertical-align: middle;
+            word-wrap: break-word;
+            /* Allow wrapping */
+            white-space: normal;
+            /* Remove nowrap to prevent breaking out of table */
+        }
+
+        .form-table th {
+            text-align: center;
+            font-weight: bold;
+            background-color: #f3f4f6 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+                /* Let a4-paper handle padding */
+            }
+
+            body * {
+                visibility: hidden;
+            }
+
+            body {
+                background-color: white;
+            }
+
+            #formModal,
+            #formModal * {
+                visibility: visible;
+            }
+
+            #formModal {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: auto;
+                background: white;
+                z-index: 99999;
+                overflow: visible;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .a4-paper {
+                box-shadow: none;
+                margin: 0;
+                width: 210mm;
+                min-height: 297mm;
+                padding: 15mm;
+                transform: none;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="loadingOverlay">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
+        <h2 class="text-2xl font-bold text-white">กำลังประมวลผล...</h2>
+        <p class="text-gray-300 mt-2 text-sm" id="loadingStatus">Processing...</p>
+    </div>
+
+    <div id="toast"><i class="fas fa-check-circle mr-2"></i>อัปเดตตารางเรียบร้อย</div>
+
+    <div class="container mx-auto px-4 py-6 max-w-5xl">
+        <header class="flex justify-between items-center mb-6 sticky top-0 bg-gray-100 z-10 py-2">
+            <div>
+                <h1 class="text-2xl font-bold text-indigo-800"><i
+                        class="fas fa-calculator mr-2"></i>ระบบคำนวณโอที (V.72)
+                </h1>
+                <p class="text-sm text-gray-500">Full Fixed (No missing functions)</p>
+            </div>
+            <div class="flex gap-2">
+                    <button onclick="window.location.reload()"
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm"><i
+                        class="fas fa-sync mr-1"></i>รีเซ็ต</button>
+                <button onclick="openFormModal()"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow flex items-center animate-bounce">
+                    <i class="fas fa-file-invoice mr-2"></i>สร้างใบเบิก
+                </button>
+            </div>
+        </header>
+
+        <div class="bg-white rounded-xl shadow p-6 mb-6">
+            <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 class="text-sm font-bold text-blue-700 mb-2 flex items-center">
+                    <i class="fas fa-calendar-alt mr-2"></i>
+                    ตั้งค่าเดือนและกะเริ่มต้น
+                </h3>
+                <div class="flex gap-4 flex-wrap items-end">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs text-gray-600 font-bold mb-1">เลือกเดือนที่ต้องการคำนวณ</label>
+                        <input type="month" id="targetMonth" value="2026-01"
+                            class="w-full border border-blue-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs text-gray-600 font-bold mb-1">วันที่ 1 ของเดือนนี้ เป็นกะอะไร?</label>
+                        <select id="refShift"
+                            class="w-full border border-blue-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="0">เช้า 1 (M1)</option>
+                            <option value="1">เช้า 2 (M2)</option>
+                            <option value="2">เช้า 3 (M3)</option>
+                            <option value="3" selected>บ่าย 1 (A1)</option>
+                            <option value="4">บ่าย 2 (A2)</option>
+                            <option value="5">บ่าย 3 (A3)</option>
+                            <option value="6">หยุด 1</option>
+                            <option value="7">หยุด 2</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button id="btnUpdateTable"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 font-bold shadow flex items-center transition-transform active:scale-95">
+                            <i class="fas fa-sync-alt mr-2"></i>อัปเดตตาราง
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex border-b border-gray-200 mb-4">
+                <button onclick="switchTab('paste')" id="tab-paste"
+                    class="tab-btn active px-4 py-2 text-sm text-gray-600 hover:text-indigo-600 focus:outline-none flex-1 md:flex-none">
+                    <i class="fas fa-paste mr-2"></i>วิธีที่ 1: ก๊อปวาง (Log ดิบ)
+                </button>
+                <button onclick="switchTab('scan')" id="tab-scan"
+                    class="tab-btn px-4 py-2 text-sm text-gray-600 hover:text-indigo-600 focus:outline-none flex-1 md:flex-none">
+                    <i class="fas fa-camera mr-2"></i>วิธีที่ 2: สแกนรูป
+                </button>
+            </div>
+
+            <div id="content-paste" class="tab-content active">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">วางข้อมูล Log ที่นี่:</label>
+                <textarea id="pasteInput"
+                    class="w-full h-40 border border-indigo-200 rounded-lg p-3 text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-indigo-50"
+                    placeholder="วางข้อมูลดิบได้เลย..."></textarea>
+                <div class="flex gap-2 mt-3">
+                    <button onclick="processCopiedText()"
+                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-bold shadow transition-all">
+                        <i class="fas fa-file-import mr-2"></i>
+                        แกะรหัสและดึงข้อมูล
+                    </button>
+                </div>
+                <div class="mt-4 hidden" id="textDebugContainer">
+                    <p class="text-xs text-gray-500 mb-1 flex justify-between">
+                        <span>สถานะการแกะข้อมูล (Log):</span>
+                        <span class="cursor-pointer text-indigo-500"
+                            onclick="document.getElementById('textDebugLog').innerHTML=''">[ล้างค่า]</span>
+                    </p>
+                    <div class="p-3 bg-gray-800 text-green-400 rounded border border-gray-700 text-xs font-mono h-48 overflow-y-auto"
+                        id="textDebugLog"></div>
+                </div>
+            </div>
+
+            <div id="content-scan" class="tab-content hidden">
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 cursor-pointer"
+                    onclick="document.getElementById('imageInput').click()">
+                    <input type="file" id="imageInput" accept="image/*" class="hidden"
+                        onchange="handleImageUpload(event)">
+                    <p class="font-bold text-gray-600">แตะเลือกรูปภาพ</p>
+                </div>
+                <div class="mt-4 hidden" id="imagePreviewContainer">
+                    <img id="imagePreview" class="max-h-48 mx-auto rounded-lg shadow">
+                    <canvas id="preprocessCanvas" class="hidden"></canvas>
+                </div>
+                <div class="mt-4">
+                    <p class="text-xs text-gray-500 mb-1 flex justify-between">
+                        <span>สถานะการอ่าน:</span><span class="cursor-pointer text-indigo-500"
+                            onclick="document.getElementById('debugLog').innerHTML=''">[Clear]</span>
+                    </p>
+                    <div class="p-3 bg-gray-800 text-green-400 rounded border border-gray-700 text-xs font-mono h-32 overflow-y-auto"
+                        id="debugLog">[Ready]</div>
+                </div>
+                <button onclick="startOCR()" id="scanBtn"
+                    class="w-full mt-4 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-lg font-bold shadow disabled:opacity-50"
+                    disabled>
+                    <i class="fas fa-magic mr-2"></i>สแกนรูปภาพ
+                </button>
+                <div id="ocrResultContainer" class="mt-4 hidden">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">ผลลัพธ์ OCR
+                        (สามารถแก้ไขข้อความที่อ่านผิดได้ก่อนส่ง):</label>
+                    <textarea id="ocrResultText"
+                        class="w-full h-48 border border-green-300 rounded-lg p-3 text-xs font-mono bg-green-50 focus:ring-2 focus:ring-green-500"
+                        placeholder="ผลลัพธ์จะแสดงที่นี่... (คุณสามารถตรวจสอบและแก้ไขตัวเลขที่ผิดพลาดได้)"></textarea>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="downloadOcrTxt()"
+                            class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-bold shadow text-sm transition-all">
+                            <i class="fas fa-download mr-2"></i> ดาวน์โหลด .TXT
+                        </button>
+                        <button onclick="sendOcrToPaste()"
+                            class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-bold shadow text-sm transition-all">
+                            <i class="fas fa-paste mr-2"></i> ส่งไปวิธีที่ 1
+                            (ก๊อปวาง)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow overflow-hidden mb-6">
+            <div class="overflow-x-auto max-h-[600px]">
+                <table class="w-full text-sm text-left relative" id="mainTable">
+                    <thead class="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-3 py-2 w-16 text-center">วัน</th>
+                            <th class="px-3 py-2 w-20 text-center">กะ</th>
+                            <th class="px-3 py-2 w-16 text-center text-xs">วันหยุด?</th>
+                            <th class="px-3 py-2 w-24 text-center bg-indigo-50">เวลาเข้า</th>
+                            <th class="px-3 py-2 w-24 text-center bg-indigo-50">เวลาออก</th>
+                            <th class="px-3 py-2 text-center w-20">OT 1.5</th>
+                            <th class="px-3 py-2 text-center w-20">OT 1.0</th>
+                            <th class="px-3 py-2 w-32 text-left">หมายเหตุ (Auto)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-20">
+            <div class="bg-blue-600 text-white p-4 rounded-xl shadow text-center">
+                <p class="text-xs opacity-80 uppercase tracking-wide">OT ปกติ (1.5)</p>
+                <p class="text-4xl font-bold mt-1" id="total15">0</p>
+                <p class="text-xs mt-1">ชั่วโมง</p>
+            </div>
+            <div class="bg-yellow-500 text-white p-4 rounded-xl shadow text-center">
+                <p class="text-xs opacity-80 uppercase tracking-wide">OT วันหยุด (1.0)</p>
+                <p class="text-4xl font-bold mt-1" id="total1">0</p>
+                <p class="text-xs mt-1">ชั่วโมง</p>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="formModal" class="fixed inset-0 bg-black/70 z-50 hidden overflow-y-auto backdrop-blur-sm">
+        <div class="min-h-screen flex flex-col items-center justify-start py-8 px-4">
+            <div class="bg-white p-2 rounded-lg shadow-xl mb-6 flex gap-2 no-print sticky top-4 z-50">
+                <button onclick="downloadPDF()"
+                    class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-medium shadow"><i
+                        class="fas fa-file-pdf mr-2"></i>PDF</button>
+                <button onclick="downloadExcel()"
+                    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-medium shadow"><i
+                        class="fas fa-file-excel mr-2"></i>Excel</button>
+                <button onclick="window.print()"
+                    class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 font-medium shadow"><i
+                        class="fas fa-print mr-2"></i>พิมพ์</button>
+                <div class="w-px bg-gray-300 mx-2"></div>
+                <button onclick="closeFormModal()"
+                    class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 font-medium">ปิด</button>
+            </div>
+            <div id="printableArea" class="a4-paper text-black">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="relative group cursor-pointer"
+                        onclick="document.getElementById('logoUploader').click()">
+                        <input type="file" id="logoUploader" accept="image/*" class="hidden"
+                            onchange="updateLogo(event)">
+                        <img id="tpnLogo" src="Logo.png" style="max-height: 45px; width: auto;" alt="TPN Logo"
+                            class="h-16 object-contain">
+                        <div id="tpnTextLogo" class="hidden">
+                            <span class="text-xs">ที่ บมจ. ทีพีเอ็น</span>
+                        </div>
+                        <img id="tpnLogoMobile" src="Logo.png" class="hidden">
+
+                    </div>
+                    <div class="text-center flex-1">
+                        <div class="font-bold text-lg">
+                            ใบขออนุมัติทำงานล่วงเวลา/ทำงานในวันหยุด
+                        </div>
+                        <div class="font-bold text-base">
+                            ฝ่ายปฏิบัติการคลังน้ำมันขอนแก่น
+                        </div>
+                        <div class="text-sm mt-1">ประจำเดือน <span id="formMonthLabel"
+                                class="font-bold"></span></div>
+                    </div>
+                    <div style="width: 50px;"></div>
+                </div>
+                <div class="mb-6 grid grid-cols-2 gap-y-4 gap-x-4">
+                    <div class="flex items-end"><span class="font-bold min-w-24 mr-2">ชื่อ-สกุล:</span><input type="text" id="formName"
+                            class="flex-1 border-b border-black outline-none px-2 py-0 bg-transparent font-medium w-32"
+                            value="PIPHATPHONG WORADEE"></div>
+                    <div class="flex items-end"><span class="font-bold min-w-24 mr-2">รหัสพนักงาน:</span><input type="text"
+                            class="flex-1 border-b border-black outline-none px-2 py-0 bg-transparent w-32"
+                            placeholder="1468003"></div>
+                    <div class="flex items-end"><span class="font-bold min-w-24 mr-2">ตำแหน่ง:</span><input type="text"
+                            class="flex-1 border-b border-black outline-none px-2 py-0 bg-transparent w-32"
+                            value="พนักงานปฏิบัติการ"></div>
+                    <div class="flex items-end"><span class="font-bold min-w-24 mr-2">สังกัด:</span><input
+                            type="text" class="flex-1 border-b border-black outline-none px-2 py-0 bg-transparent w-32"
+                            value="คลังน้ำมันขอนแก่น"></div>
+                </div>
+                <table class="form-table mb-4" id="exportTable" style="width: 100%; table-layout: fixed;">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" style="width: 40px;">ลำดับที่</th>
+                            <th rowspan="2" style="width: 120px;">ชื่อ - นามสกุล</th>
+                            <th rowspan="2" style="width: 90px;">วันที่ขออนุมัติ<br>ทำงานล่วงเวลา</th>
+                            <th colspan="2" style="width: 100px;">เวลาที่ทำงานล่วงเวลา</th>
+                            <th rowspan="2" style="width: 120px;">งานที่ได้รับปฏิบัติ</th>
+                            <th colspan="3" style="width: 100px;">จำนวนชั่วโมงที่ใช้ทำงานล่วงเวลา</th>
+                            <th rowspan="2" style="width: 90px;">ลงชื่อผู้ปฏิบัติงาน</th>
+                        </tr>
+
+                        <tr>
+                            <th>IN</th>
+                            <th>OUT</th>
+                            <th>1 เท่า</th>
+                            <th>1.5 เท่า</th>
+                            <th>3 เท่า</th>
+                        </tr>
+                    </thead>
+                    <tbody id="formTableBody"></tbody>
+                    <tfoot>
+                        <tr class="bg-gray-50 font-bold">
+                            <td colspan="6" class="border border-black p-2 text-right pr-4">
+                                รวมจำนวนชั่วโมง</td>
+                            <td class="border border-black p-2 text-center" id="sum1">0</td>
+                            <td class="border border-black p-2 text-center" id="sum15">0</td>
+                            <td class="border border-black p-2 text-center" id="sum3">0</td>
+                            <td class="border border-black p-2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div class="mt-6">
+                    <div class="flex justify-between px-4">
+                        <div class="text-center w-1/2">
+                            <div class="mb-6 font-medium">
+                                ลงชื่อ................................................ ผู้ขอ
+                            </div>
+                            <div>( นายนิมิต กาญจนภูวดล )</div>
+                            <div>ผู้จัดการแผนก/หัวหน้าส่วนงาน
+                            </div>
+                            <div class="text-sm mt-1">วันที่ ........../........../..........</div>
+                        </div>
+                        <div class="text-center w-1/2">
+                            <div class="mb-6 font-medium">
+                                ลงชื่อ................................................ ผู้อนุมัติ
+                            </div>
+                            <div>( นายชาญชัย มาศวิเชียร )</div>
+                            <div>
+                                ผู้จัดการฝ่าย/ผู้บริหารระดับสูงกว่า
+                            </div>
+                            <div class="text-sm mt-1">วันที่ ........../........../..........</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="notes mt-6 text-xs text-gray-600 px-4">
+                    <strong>***หมายเหตุ</strong>
+                    <ol class="ml-4 mt-1">
+                        <li>หัวหน้าส่วนงานที่มีความจำเป็นต้องให้พนักงานปฏิบัติงานล่วงเวลา/ปฏิบัติงานในวันหยุดต้องจัดทำรายละเอียดเสนอผู้อนุมัติล่วงหน้า</li>
+                        <li>ส่งต้นฉบับให้แผนกธุรการ แผนกบุคคล ฝ่ายปฏิบัติการส่วนภูมิภาค อย่างน้อยก่อนเวลา 17.00 น. ของทุกวัน</li>
+                        <li>ฝ่ายคลังส่งสำเนาแจ้งแผนกธุรการ แผนกบุคคล ฝ่ายปฏิบัติการส่วนภูมิภาคตามลำดับเพื่อดำเนินการ</li>
+                        <li>เวลาที่เริ่มทำงานล่วงเวลา หมายถึงเวลาที่เริ่มทำงานล่วงเวลาจริงที่นอกเหนือจากการทำงานปกติ เช่น 08:30-17:30 น. แต่ถ้ามีงานเร่งด่วนอาจเริ่มทำงานล่วงเวลาได้ทันที</li>
+                        <li>เวลาที่เลิกทำงานล่วงเวลา หมายถึงเวลาที่พนักงานปฏิบัติงานจนถึงเวลาเลิกงานที่แจ้งไว้ข้างต้น หรือทำงานจนเสร็จสิ้นงาน</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    <canvas id="logoCanvas" width="200" height="100" style="display:none;"></canvas>
+
+    <script>
+        let worker;
+        let userData = {};
+        let globalExtractedName = "";
+
+        window.addEventListener('unhandledrejection', e => { if (e.reason?.isTrusted !== true) console.warn(e.reason); e.preventDefault(); });
+
+        const SHIFT_PATTERN = [
+            { code: 'M1', name: 'เช้า 1', type: 'M', start: '07:00' }, { code: 'M2', name: 'เช้า 2', type: 'M', start: '07:00' }, { code: 'M3', name: 'เช้า 3', type: 'M', start: '07:00' },
+            { code: 'A1', name: 'บ่าย 1', type: 'A', start: '15:00' }, { code: 'A2', name: 'บ่าย 2', type: 'A', start: '15:00' }, { code: 'A3', name: 'บ่าย 3', type: 'A', start: '15:00' },
+            { code: 'Off1', name: 'หยุด 1', type: 'Off', start: null }, { code: 'Off2', name: 'หยุด 2', type: 'Off', start: null },
+        ];
+
+        const HOLIDAYS = {
+            '2026-01-01': 'วันขึ้นปีใหม่', '2026-01-02': 'วันหยุดชดเชยปีใหม่', '2026-03-03': 'วันมาฆบูชา',
+            '2026-04-06': 'วันจักรี', '2026-04-13': 'วันสงกรานต์', '2026-04-14': 'วันสงกรานต์', '2026-04-15': 'วันสงกรานต์',
+            '2026-05-01': 'วันแรงงานแห่งชาติ', '2026-05-04': 'วันฉัตรมงคล', '2026-06-01': 'ชดเชยวันวิสาขบูชา',
+            '2026-06-03': 'วันเฉลิมฯ พระราชินี', '2026-07-28': 'วันเฉลิมฯ ร.10', '2026-07-29': 'วันอาสาฬหบูชา',
+            '2026-08-12': 'วันแม่แห่งชาติ', '2026-10-13': 'วันนวมินทรมหาราช', '2026-10-23': 'วันปิยมหาราช',
+            '2026-12-07': 'ชดเชยวันพ่อแห่งชาติ', '2026-12-10': 'วันรัฐธรรมนูญ', '2026-12-31': 'วันสิ้นปี'
+        };
+
+        function getShift(dateStr) {
+            const monthVal = document.getElementById('targetMonth').value;
+            if (!monthVal) return SHIFT_PATTERN[0];
+            const refDate = moment(monthVal + '-01');
+            const refIdx = parseInt(document.getElementById('refShift').value) || 0;
+            const diff = moment(dateStr).diff(refDate, 'days');
+            let idx = (refIdx + diff) % 8;
+            if (idx < 0) idx += 8;
+            return SHIFT_PATTERN[idx] || SHIFT_PATTERN[0];
+        }
+
+        // --- CENTRAL CALCULATION LOGIC ---
+        function calculateDailyStats(dateStr, inTime, outTime, isHolidayChecked, shiftType) {
+            let ot15 = 0;
+            let ot1 = 0;
+            let note = "";
+            const isHol = isHolidayChecked || !!HOLIDAYS[dateStr];
+            const isOffShift = shiftType === 'Off';
+            let holName = HOLIDAYS[dateStr] || "วันหยุด";
+
+            if (inTime && outTime) {
+                let startRaw = moment(`${dateStr} ${inTime}`);
+                let endRaw = moment(`${dateStr} ${outTime}`);
+                if (endRaw.isBefore(startRaw)) endRaw.add(1, 'd');
+
+                // Snap Logic (Bug #4 fixed: endRaw adjust for 3:00 cross-day)
+                let start = startRaw.clone(), end = endRaw.clone();
+                [7, 15, 19, 23, 3].forEach(h => {
+                    let target = startRaw.clone().hour(h).minute(0);
+                    if (h === 3 && startRaw.hour() > 20) target.add(1, 'd');
+                    if (Math.abs(startRaw.diff(target, 'minutes')) <= 30) start = target;
+
+                    let targetEnd = endRaw.clone().hour(h).minute(0);
+                    if (h === 3 && endRaw.hour() <= 5 && endRaw.date() !== moment(dateStr).date()) targetEnd.add(1, 'd');
+                    if (Math.abs(endRaw.diff(targetEnd, 'minutes')) <= 30) end = targetEnd;
+                });
+
+                const startH = start.hour();
+                const dur = end.diff(start, 'hours', true);
+                let isPipe = false;
+
+                // Pipeline Detection (Bug #3 fixed: cross-day check for night shift)
+                // กะ Off ข้าม Pipeline → คิด OT เต็มชั่วโมง (2 แรง)
+                if (startH === 7 && dur >= 11 && end.hour() === 19) {
+                    isPipe = true;
+                    if (!isOffShift) { note = "รับน้ำมัน กะเช้า (OT 4)"; ot15 = 4; }
+                } else if (startH === 19 && dur >= 11 && end.hour() === 7 && end.date() !== start.date()) {
+                    isPipe = true;
+                    if (!isOffShift) { note = "รับน้ำมัน กะดึก (OT 4)"; ot15 = 4; }
+                }
+
+                if (!isPipe) {
+                    let workDuration = end.diff(start, 'hours', true);
+
+                    // Bug #2 fixed: กะ Off ไม่ลบ 8 (2 แรง)
+                    let excess = isOffShift ? workDuration : (workDuration - 8);
+
+                    // Bug #5 fixed: ปัดเป็นนาทีก่อนลด floating point error
+                    if (excess > 0) {
+                        let totalMinutes = Math.round(excess * 60);
+                        let h = Math.floor(totalMinutes / 60);
+                        if (totalMinutes % 60 >= 30) h++;
+                        ot15 = h;
+                    }
+                    if (ot15 === 0 && !isHol && !isOffShift) note = "ปกติ";
+
+                    // วันหยุดนักขัตฤกษ์: OT 1.5 = 0 เสมอ
+                    if (isHol) ot15 = 0;
+                }
+
+                if (isHol || isOffShift) {
+                    // Use SNAPPED times (same as OT 1.5 calc) to get correct duration
+                    // e.g. in=07:01 snaps to 07:00, so 07:00→15:00 = 8h (not 7h59m)
+                    const hoursWorked = end.diff(start, 'hours', true);
+                    const hoursWorkedMins = Math.round(hoursWorked * 60);
+                    ot1 = Math.min(8, Math.floor(hoursWorkedMins / 60));
+                    if (ot1 < 0) ot1 = 0;
+                    if (ot1 > 0) {
+                        if (isOffShift && !HOLIDAYS[dateStr]) holName = "กะหยุด (2 แรง)";
+                        note = note ? note + ", " + holName : holName;
+                    }
+                }
+            } else if (isHol) {
+                // Holiday normally gets 8 hours OT1 even if not worked? Check user logic. 
+                // The old logic always gave 8. We'll keep it but only if missing times.
+                ot1 = 8;
+                note = note ? note + ", " + holName : holName;
+            }
+
+            return { ot15, ot1, note };
+        }
+
+        // --- DOM CALC WRAPPER ---
+        function calc(dateStr) {
+            const inEl = document.getElementById(`in-${dateStr}`);
+            const outEl = document.getElementById(`out-${dateStr}`);
+            const noteEl = document.getElementById(`note-${dateStr}`);
+            const holCheck = document.getElementById(`holiday-${dateStr}`);
+
+            // Update State
+            if (!userData[dateStr]) userData[dateStr] = {};
+            userData[dateStr].in = inEl.value; userData[dateStr].out = outEl.value;
+
+            const shift = getShift(dateStr);
+            const stats = calculateDailyStats(dateStr, inEl.value, outEl.value, holCheck.checked, shift.type);
+
+            // Update display (set text of first child text, preserve hidden input)
+            const disp15El = document.getElementById(`disp15-${dateStr}`);
+            const disp1El = document.getElementById(`disp1-${dateStr}`);
+            document.getElementById(`val15-${dateStr}`).value = stats.ot15;
+            document.getElementById(`val1-${dateStr}`).value = stats.ot1;
+            disp15El.childNodes[0].textContent = stats.ot15 > 0 ? stats.ot15 : '-';
+            disp1El.childNodes[0].textContent = stats.ot1 > 0 ? stats.ot1 : '-';
+
+            noteEl.innerText = stats.note || '-';
+            if (stats.note.includes("ปกติ")) noteEl.className = "px-2 text-left text-xs text-green-600 font-bold";
+            else if (stats.note.includes("OT") || stats.note.includes("วันหยุด") || stats.note.includes("กะหยุด") || stats.note.includes("2 แรง")) noteEl.className = "px-2 text-left text-xs text-red-600 font-bold";
+            else noteEl.className = "px-2 text-left text-xs text-gray-500";
+
+            // Update Totals
+            let t15 = 0, t1 = 0;
+            document.querySelectorAll('input[id^="val15-"]').forEach(e => t15 += Number(e.value));
+            document.querySelectorAll('input[id^="val1-"]').forEach(e => t1 += Number(e.value));
+            document.getElementById('total15').innerText = t15;
+            document.getElementById('total1').innerText = t1;
+        }
+
+        // --- PARSER ---
+        function processCopiedText() {
+            try {
+                let rawText = document.getElementById('pasteInput').value;
+                if (!rawText.trim()) return alert("กรุณาวางข้อมูล");
+
+                const monthVal = document.getElementById('targetMonth').value;
+                const [targetYear, targetMonth] = monthVal.split('-').map(Number);
+
+                // ---- DATE & TIME EXTRACTION ----
+                let allTimes = [];
+                let match;
+
+                // 1. Standard: YYYY-MM-DD HH:MM / DD/MM/YYYY HH:MM:SS
+                const regexStd = /(\d{2,4}[-/\.]\d{1,2}[-/\.]\d{2,4})[\sT]*(\d{1,2}[:.]\d{2}(?:[:.]\d{2})?)/g;
+                while ((match = regexStd.exec(rawText)) !== null) {
+                    let dateStr = match[1].replace(/[\.\/]/g, '-');
+                    let timeStr = match[2].replace(/\./g, ':');
+                    if (timeStr.length === 4) timeStr = '0' + timeStr;
+                    if (timeStr.length === 5) timeStr += ":00";
+                    let parsedDate = moment(dateStr, ['YYYY-MM-DD', 'DD-MM-YYYY', 'YYYY-MM-D', 'D-MM-YYYY']);
+                    if (parsedDate.isValid()) {
+                        allTimes.push(moment(`${parsedDate.format('YYYY-MM-DD')}T${timeStr}`));
+                    }
+                }
+
+                // 2. Space separated: YYYY MM DD HH:MM (Access Control log screenshot common pattern)
+                const regexSpace = /(20\d{2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})[:.\s](\d{2})/g;
+                while ((match = regexSpace.exec(rawText)) !== null) {
+                    const yr = match[1], mo = match[2].padStart(2, '0'), dy = match[3].padStart(2, '0');
+                    const hr = match[4].padStart(2, '0'), mn = match[5];
+                    const dt = moment(`${yr}-${mo}-${dy}T${hr}:${mn}:00`);
+                    if (dt.isValid()) {
+                        // Avoid duplicates if already caught by regexStd
+                        if (!allTimes.some(t => t.format('YYYY-MM-DD HH:mm') === dt.format('YYYY-MM-DD HH:mm'))) {
+                            allTimes.push(dt);
+                        }
+                    }
+                }
+
+                // 3. Fallback: Sometimes Tesseract drops the year. Look for MM DD HH MM
+                if (allTimes.length === 0) {
+                    const regexNoYear = /(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})[:.\s](\d{2})/g;
+                    while ((match = regexNoYear.exec(rawText)) !== null) {
+                        const mo = match[1].padStart(2, '0'), dy = match[2].padStart(2, '0');
+                        const hr = match[3].padStart(2, '0'), mn = match[4];
+                        const dt = moment(`${targetYear}-${mo}-${dy}T${hr}:${mn}:00`);
+                        if (dt.isValid()) allTimes.push(dt);
+                    }
+                }
+
+                // 4. Fallback 2: Copied directly from the app's log result (Day 1: 07:22 - 15:32)
+                if (allTimes.length === 0) {
+                    const regexLogApp = /Day\s+(\d{1,2}):\s+(\d{1,2})[:.](\d{2})\s+[-~]\s+(\d{1,2})[:.](\d{2})/gi;
+                    while ((match = regexLogApp.exec(rawText)) !== null) {
+                        const dy = match[1].padStart(2, '0');
+                        const h1 = match[2].padStart(2, '0');
+                        const m1 = match[3];
+                        const dt1 = moment(targetYear + '-' + String(targetMonth).padStart(2, '0') + '-' + dy + 'T' + h1 + ':' + m1 + ':00');
+                        if (dt1.isValid()) allTimes.push(dt1);
+
+                        const h2 = match[4].padStart(2, '0');
+                        const m2 = match[5];
+                        const dt2 = moment(targetYear + '-' + String(targetMonth).padStart(2, '0') + '-' + dy + 'T' + h2 + ':' + m2 + ':00');
+                        if (dt2.isValid()) allTimes.push(dt2);
+                    }
+                }
+
+                // 5. Fallback 3: Copied directly from Table output (e.g. 2 ???.  07:01 15:00)
+                if (allTimes.length === 0) {
+                    const regexTableApp = /(\d{1,2})\s+[ก-ฮ](\d{2})/g;
+                    while ((match = regexTableApp.exec(rawText)) !== null) {
+                        const dy = match[1].padStart(2, '0');
+                        const dt1 = moment(targetYear + '-' + String(targetMonth).padStart(2, '0') + '-' + dy + 'T' + match[2].padStart(2, '0') + ':' + match[3] + ':00');
+                        const dt2 = moment(targetYear + '-' + String(targetMonth).padStart(2, '0') + '-' + dy + 'T' + match[4].padStart(2, '0') + ':' + match[5] + ':00');
+                        if (dt1.isValid()) allTimes.push(dt1);
+                        if (dt2.isValid()) allTimes.push(dt2);
+                    }
+                }
+
+                log(`แยกข้อมูลวันที่และเวลาสำเร็จ พบจำนวน ${allTimes.length} รายการ`, 'info', 'textDebugLog');
+
+                // ---- NAME EXTRACTION ----
+                // Try to find first all-caps English name near a numeric ID (e.g. access card number)
+                const nameMatch = rawText.match(/\d{5,10}\s+([A-Z][A-Z]+(?:\s+[A-Z][A-Z]+)*)/);
+                if (nameMatch) globalExtractedName = nameMatch[1].trim();
+
+                if (allTimes.length === 0) return alert("ไม่พบข้อมูลวันที่ใน Log");
+                allTimes.sort((a, b) => a.diff(b));
+
+                document.getElementById('textDebugContainer').classList.remove('hidden');
+                document.getElementById('textDebugLog').innerHTML = '';
+                log("เริ่มการจับคู่แบบ Strict Shift (Flexible Input)...", 'info', 'textDebugLog');
+
+                let usedIndices = new Set();
+                let matched = 0;
+
+                for (let i = 0; i < allTimes.length; i++) {
+                    if (usedIndices.has(i)) continue;
+
+                    const tIn = allTimes[i];
+                    const hIn = tIn.hour();
+                    let isStart = false;
+
+                    if (hIn >= 5 && hIn <= 9) isStart = true;
+                    else if (hIn >= 13 && hIn <= 16) isStart = true;
+                    else if (hIn >= 17 && hIn <= 21) isStart = true;
+
+                    if (isStart) {
+                        let foundOut = null;
+                        for (let j = i + 1; j < allTimes.length; j++) {
+                            if (usedIndices.has(j)) continue;
+                            const tCheck = allTimes[j];
+                            const diffHrs = tCheck.diff(tIn, 'hours', true);
+
+                            if (diffHrs < 3) continue;
+                            if (diffHrs > 16) break;
+
+                            const checkH = tCheck.hour();
+                            let isNextDay = tCheck.date() !== tIn.date();
+
+                            if (hIn >= 17 && isNextDay) {
+                                foundOut = tCheck; usedIndices.add(j); break;
+                            } else if (hIn < 17 && !isNextDay) {
+                                foundOut = tCheck; usedIndices.add(j); break;
+                            } else if (hIn >= 13 && hIn <= 16 && isNextDay && checkH <= 5) {
+                                foundOut = tCheck; usedIndices.add(j); break;
+                            }
+                        }
+                        const dayNum = tIn.date();
+                        if (tIn.month() + 1 === targetMonth) {
+                            let times = [tIn.format("HH:mm")];
+                            if (foundOut) times.push(foundOut.format("HH:mm"));
+
+                            const m = document.getElementById('targetMonth').value;
+                            const ds = `${m}-${String(dayNum).padStart(2, '0')}`;
+                            const existIn = document.getElementById(`in-${ds}`)?.value;
+                            const existOut = document.getElementById(`out-${ds}`)?.value;
+
+                            // Only overwrite if: no existing data, OR new match is more complete than old
+                            const hasExistingComplete = existIn && existOut;
+                            const newIsComplete = times.length >= 2;
+                            if (!hasExistingComplete || newIsComplete) {
+                                fillRow(dayNum, times);
+                                log(`Day ${dayNum}: ${times.join(" - ")}`, 'success', 'textDebugLog');
+                                matched++;
+                            } else {
+                                log(`Day ${dayNum}: ข้ามแล้ว (มีข้อมูลครบแล้ว: ${existIn} - ${existOut})`, 'info', 'textDebugLog');
+                            }
+                        }
+                        usedIndices.add(i);
+                    }
+                }
+                setTimeout(() => alert(`ดึงข้อมูลสำเร็จ! พบและจับคู่ได้ ${matched} วัน`), 500);
+
+            } catch (e) { alert(e.message); }
+        }
+
+        // --- HELPER FUNCTIONS ---
+        function switchTab(tab) {
+            try {
+                console.log("SWITCH_TAB CALLED:", tab);
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active', 'text-indigo-600', 'border-b-2', 'border-indigo-600');
+                });
+                document.querySelectorAll('.tab-content').forEach(c => {
+                    c.classList.remove('active');
+                    c.classList.add('hidden');
+                });
+
+                // Add active class to selected tab and content
+                const selectedTab = document.getElementById(`tab-${tab}`);
+                const selectedContent = document.getElementById(`content-${tab}`);
+
+                if (selectedTab && selectedContent) {
+                    selectedTab.classList.add('active', 'text-indigo-600', 'border-b-2', 'border-indigo-600');
+                    selectedContent.classList.add('active');
+                    selectedContent.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error("Tab switch error:", err);
+            }
+        }
+        function log(msg, type, target) {
+            const el = document.getElementById(target);
+            el.innerHTML += `<div class="text-${type === 'success' ? 'green' : 'gray'}-400 border-b border-gray-700/50 pb-1 font-mono">${msg}</div>`;
+        }
+        function updateLogo(e) {
+            const f = e.target.files[0];
+            if (f) { const r = new FileReader(); r.onload = x => { document.getElementById('tpnLogo').src = x.target.result; document.getElementById('tpnLogo').classList.remove('hidden'); document.getElementById('tpnTextLogo').classList.add('hidden'); }; r.readAsDataURL(f); }
+        }
+        function updateTableBtn() { generateTable(); document.getElementById('toast').className = "show"; setTimeout(() => document.getElementById('toast').className = "", 3000); }
+
+        function fillRow(day, times) {
+            const m = document.getElementById('targetMonth').value;
+            const dateStr = `${m}-${String(day).padStart(2, '0')}`;
+            if (!userData[dateStr]) userData[dateStr] = {};
+            userData[dateStr].in = times[0];
+            userData[dateStr].out = times[1] || "";
+
+            const inEl = document.getElementById(`in-${dateStr}`);
+            const outEl = document.getElementById(`out-${dateStr}`);
+            if (inEl) {
+                inEl.value = times[0];
+                outEl.value = times[1] || "";
+                inEl.parentElement.classList.add('new-data');
+                outEl.parentElement.classList.add('new-data');
+                calc(dateStr);
+            }
+        }
+
+        function generateTable() {
+            const m = document.getElementById('targetMonth').value;
+            const [y, mo] = m.split('-').map(Number);
+            const days = new Date(y, mo, 0).getDate();
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            for (let i = 1; i <= days; i++) {
+                const dateStr = `${m}-${String(i).padStart(2, '0')}`;
+                const shift = getShift(dateStr);
+                const saved = userData[dateStr] || {};
+                const isHol = !!HOLIDAYS[dateStr];
+                const row = `<tr class="border-b hover:bg-gray-50 transition">
+                    <td class="px-3 py-2 text-center text-sm">${i} <span class="text-xs text-gray-400">${moment(dateStr).format('dd')}</span></td>
+                    <td class="px-2 text-center"><span class="px-2 py-1 rounded text-xs font-bold ${shift.type === 'M' ? 'bg-blue-100 text-blue-800' : (shift.type === 'A' ? 'bg-pink-100 text-pink-800' : 'bg-gray-100 text-gray-500')}">${shift.code}</span></td>
+                    <td class="text-center"><input type="checkbox" id="holiday-${dateStr}" ${isHol ? 'checked' : ''} onchange="calc('${dateStr}')" class="w-4 h-4"></td>
+                    <td class="text-center"><input type="time" id="in-${dateStr}" value="${saved.in || ''}" class="border rounded px-1 w-full text-center" onchange="calc('${dateStr}')"></td>
+                    <td class="text-center"><input type="time" id="out-${dateStr}" value="${saved.out || ''}" class="border rounded px-1 w-full text-center" onchange="calc('${dateStr}')"></td>
+                    <td class="text-center font-bold text-blue-600" id="disp15-${dateStr}">-<input type="hidden" id="val15-${dateStr}" value="0"></td>
+                    <td class="text-center font-bold text-yellow-600" id="disp1-${dateStr}">-<input type="hidden" id="val1-${dateStr}" value="0"></td>
+                    <td class="px-2 text-left text-xs text-gray-500" id="note-${dateStr}">-</td>
+                </tr>`;
+                tbody.insertAdjacentHTML('beforeend', row);
+                // Trigger calc to show initial state
+                if (saved.in || saved.out || isHol) {
+                    // We need to wait for DOM elements to be ready. 
+                    // They are inserted synchronously, so it should be fine.
+                    calc(dateStr);
+                }
+            }
+        }
+
+        // --- IMAGE UPLOAD & OCR ---
+        let uploadedImageFile = null;
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            uploadedImageFile = file;
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                const preview = document.getElementById('imagePreview');
+                preview.src = ev.target.result;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                document.getElementById('scanBtn').disabled = false;
+                document.getElementById('scanBtn').className = 'w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-bold shadow transition-all';
+                log('รูปภาพพร้อมสแกน: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)', 'success', 'debugLog');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Bug #6: Loading overlay helpers
+        function showLoading(msg) {
+            const el = document.getElementById('loadingOverlay');
+            el.style.display = 'flex';
+            document.getElementById('loadingStatus').innerText = msg || 'Processing...';
+        }
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        async function startOCR() {
+            if (!uploadedImageFile) return alert('กรุณาเลือกรูปภาพก่อน');
+
+            const scanBtn = document.getElementById('scanBtn');
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> กำลังประมวลผล...';
+            showLoading('กำลังเตรียมรูปภาพ...');
+            log('เริ่มสแกน OCR (ภาษาไทย + อังกฤษ)...', 'info', 'debugLog');
+
+            try {
+                // --- Step 1: Preprocess image for better OCR ---
+                const imageUrl = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = e => resolve(e.target.result);
+                    reader.readAsDataURL(uploadedImageFile);
+                });
+
+                const originalImg = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = imageUrl;
+                });
+
+                // --- Preprocessing: Dynamic Scale + Color-based text isolation ---
+                // Key insight: Access Control tables have COLORED text (blue/dark) on white/light background
+                // Grayscale+threshold FAILS because blue text blends with blue-tinted backgrounds
+                // Solution: isolate dark pixels (text) from light pixels (background)
+
+                const minWidth = 3000;
+                const dynScale = Math.max(4, Math.ceil(minWidth / originalImg.width));
+                log(`Scale: ${dynScale}x (${originalImg.width}→${originalImg.width * dynScale}px)`, 'info', 'debugLog');
+
+                const canvas = document.getElementById('preprocessCanvas');
+                canvas.width = originalImg.width * dynScale;
+                canvas.height = originalImg.height * dynScale;
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(originalImg, 0, 0, canvas.width, canvas.height);
+
+                // Color filter: dark pixels → black (text), light pixels → white (background)
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const d = imgData.data;
+                const darkThreshold = 140; // pixels darker than this = text
+                for (let i = 0; i < d.length; i += 4) {
+                    const r = d[i], g = d[i + 1], b = d[i + 2];
+                    // Luminance (perceived brightness)
+                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                    // Also detect blue text specifically (blue > red && blue > green)
+                    const isBlueText = b > 100 && b > r * 1.3 && lum < 180;
+                    const isDarkText = lum < darkThreshold;
+                    if (isDarkText || isBlueText) {
+                        d[i] = d[i + 1] = d[i + 2] = 0; // black
+                    } else {
+                        d[i] = d[i + 1] = d[i + 2] = 255; // white
+                    }
+                    d[i + 3] = 255;
+                }
+                ctx.putImageData(imgData, 0, 0);
+                log(`ปรับรูปภาพ: ${originalImg.width}x${originalImg.height} → ${canvas.width}x${canvas.height}`, 'info', 'debugLog');
+
+                const processedBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+
+                // --- OCR ---
+                const hasUsefulData = (t) => /\d{4}[-\s/.]\d{1,2}[-\s/.]\d{1,2}/.test(t) && /\d{1,2}[:.]\d{2}/.test(t);
+                const logPreview = (label, t) => {
+                    const preview = t.substring(0, 500).replace(/\n/g, ' | ');
+                    log(`[${label}] ${preview}`, 'info', 'debugLog');
+                };
+
+                document.getElementById('loadingStatus').innerText = 'กำลังโหลด OCR Engine...';
+
+                const worker = await Tesseract.createWorker('eng', 1, {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const pct = (m.progress * 100).toFixed(0);
+                            scanBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> สแกน ${pct}%`;
+                            document.getElementById('loadingStatus').innerText = `สแกน... ${pct}%`;
+                        }
+                    }
+                });
+
+                // Strategy 1: Color-filtered image + Whitelist
+                log('Strategy 1: Color-filtered + Whitelist...', 'info', 'debugLog');
+                await worker.setParameters({
+                    tessedit_pageseg_mode: '6',
+                    preserve_interword_spaces: '1',
+                    tessedit_char_whitelist: '0123456789-:./_ ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+                });
+                let result = await worker.recognize(processedBlob);
+                let text = result.data.text.trim();
+                let data = result.data;
+                log(`S1: ${data.words.length} คำ, confidence ${data.confidence.toFixed(1)}%`, 'info', 'debugLog');
+                logPreview('S1', text);
+
+                // Strategy 2: Color-filtered + PSM 4 (column mode)
+                if (!hasUsefulData(text)) {
+                    log('Strategy 2: Color-filtered + PSM4 column...', 'info', 'debugLog');
+                    await worker.setParameters({ tessedit_pageseg_mode: '4' });
+                    const r2 = await worker.recognize(processedBlob);
+                    logPreview('S2', r2.data.text.trim());
+                    if (r2.data.text.trim().length > text.length || hasUsefulData(r2.data.text.trim())) {
+                        text = r2.data.text.trim(); data = r2.data;
+                    }
+                }
+
+                // Strategy 3: Original color image (no filter) + no whitelist
+                if (!hasUsefulData(text)) {
+                    log('Strategy 3: Original color + no whitelist...', 'info', 'debugLog');
+                    // Create high-res color version
+                    const canvasColor = document.createElement('canvas');
+                    canvasColor.width = canvas.width;
+                    canvasColor.height = canvas.height;
+                    const ctxC = canvasColor.getContext('2d');
+                    ctxC.imageSmoothingEnabled = true;
+                    ctxC.imageSmoothingQuality = 'high';
+                    ctxC.drawImage(originalImg, 0, 0, canvasColor.width, canvasColor.height);
+                    const colorBlob = await new Promise(r => canvasColor.toBlob(r, 'image/png'));
+                    await worker.setParameters({
+                        tessedit_pageseg_mode: '6',
+                        tessedit_char_whitelist: ''
+                    });
+                    const r3 = await worker.recognize(colorBlob);
+                    logPreview('S3', r3.data.text.trim());
+                    if (r3.data.text.trim().length > text.length || hasUsefulData(r3.data.text.trim())) {
+                        text = r3.data.text.trim(); data = r3.data;
+                    }
+                }
+
+                await worker.terminate();
+
+                // Final result
+                log(`=== ผลลัพธ์: ${data.words.length} คำ, confidence ${data.confidence.toFixed(1)}% ===`, 'info', 'debugLog');
+                logPreview('FINAL', text);
+
+                if (!text) {
+                    log('ไม่พบข้อความ — ลองครอปภาพให้เห็นเฉพาะตาราง หรือใช้ภาพที่ชัดขึ้น', 'error', 'debugLog');
+                    alert('ไม่พบข้อความในรูปภาพครับ\n\nวิธีแก้ไข:\n1. ลองครอป (Crop) ภาพให้เห็นเฉพาะตาราง\n2. ตรวจสอบว่าภาพชัดพอ\n3. ลองถ่าย Screenshot หรือ Zoom ภาพให้ชัดขึ้น');
+                }
+            } catch (err) {
+                console.error('OCR Error:', err);
+                log('เกิดข้อผิดพลาด: ' + err.message, 'error', 'debugLog');
+                alert('เกิดข้อผิดพลาดในการสแกน: ' + err.message);
+            } finally {
+                hideLoading();
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = '<i class="fas fa-magic mr-2"></i> สแกนรูปภาพ';
+                scanBtn.className = 'w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-bold shadow transition-all';
+            }
+        }
+
+        function downloadOcrTxt() {
+            const text = document.getElementById('ocrResultText').value;
+            if (!text) return alert('ไม่มีข้อความให้ดาวน์โหลด');
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `OCR_Result_${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function sendOcrToPaste() {
+            const text = document.getElementById('ocrResultText').value;
+            if (!text) return alert('ไม่มีข้อความ');
+            document.getElementById('pasteInput').value = text;
+            switchTab('paste');
+            log('ส่งข้อความ OCR ไปยังช่องก๊อปวางแล้ว', 'success', 'textDebugLog');
+            document.getElementById('textDebugContainer').classList.remove('hidden');
+        }
+
+        // --- EXPORT FUNCTIONS ---
+        function syncInputsToAttributes() {
+            document.querySelectorAll('#printableArea input[type="text"]').forEach(input => {
+                input.setAttribute('value', input.value);
+            });
+        }
+
+        async function downloadPDF() {
+            syncInputsToAttributes();
+            const container = document.createElement('div');
+            try {
+                const originalElement = document.getElementById('printableArea');
+                const clone = originalElement.cloneNode(true);
+                // Force remove margins and shadow so PDF doesn't include it in width calc
+                clone.style.margin = '0';
+                clone.style.boxShadow = 'none';
+                clone.style.transform = 'none';
+
+                const inputs = clone.querySelectorAll('input');
+                inputs.forEach(input => {
+                    const span = document.createElement('span');
+                    span.innerText = input.value;
+                    span.style.fontWeight = 'normal';
+                    span.style.display = 'block';
+                    span.style.textAlign = input.classList.contains('text-center') ? 'center' : 'left';
+                    if (input.parentNode) input.parentNode.replaceChild(span, input);
+                });
+                container.style.position = 'absolute';
+                container.style.top = '0'; container.style.left = '0';
+                container.style.zIndex = '-1000'; container.style.opacity = '0';
+                container.appendChild(clone);
+                document.body.appendChild(container);
+
+                const opt = {
+                    margin: [0, 0, 0, 0], // Top, Left, Bottom, Right
+                    filename: `ใบเบิกโอที_TPN_${document.getElementById('targetMonth').value}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0, scale: 2, windowWidth: 794 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                await html2pdf().set(opt).from(clone).save();
+            } catch (e) {
+                console.error("Error preparing PDF", e);
+                alert("เกิดข้อผิดพลาดในการสร้าง PDF: " + e.message);
+            } finally {
+                if (document.body.contains(container)) document.body.removeChild(container);
+            }
+        }
+
+        function downloadExcel() {
+            try {
+                syncInputsToAttributes();
+                const monthText = document.getElementById('formMonthLabel').innerText;
+                const tbody = document.getElementById('formTableBody').innerHTML;
+                let logoHtml = '<td colspan="9" class="no-border" style="font-size:20pt; font-weight:bold; font-style:italic;"></td>';
+                const imgEl = document.getElementById('tpnLogo');
+                if (!imgEl.classList.contains('hidden') && imgEl.src) {
+                    logoHtml = `<td colspan="9" class="no-border" style="text-align:left;"><img src="${imgEl.src}" height="60"></td>`;
+                }
+
+                let tableHtml = `
+                    \x3Chtml xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"\x3E
+                    \x3Chead\x3E
+                        <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
+                        <style>
+                            @page { mso-page-orientation: portrait; size: 21cm 29.7cm; margin: 1cm; }
+                            table { border-collapse: collapse; width: 100%; font-family: 'Sarabun', sans-serif; }
+                            th, td { border: 1px solid black; padding: 5px; text-align: center; }
+                            .no-border { border: none !important; }
+                            .header { font-size: 14pt; font-weight: bold; }
+                            .cell-border { border: 1px solid #000000 !important; }
+                        </style>
+                    \x3C/head\x3E
+                    \x3Cbody\x3E
+                        <table>
+                            <tr>${logoHtml}</tr>
+                            <tr><td colspan="10" class="no-border" style="text-align:center; font-size:14pt; font-weight:bold;">ใบขออนุมัติทำงานล่วงเวลา/ทำงานในวันหยุด</td></tr>
+                            <tr><td colspan="10" class="no-border" style="text-align:center; font-size:12pt; font-weight:bold;">ฝ่ายปฏิบัติการคลังน้ำมันขอนแก่น</td></tr>
+                            <tr><td colspan="10" class="no-border" style="text-align:center;">ประจำเดือน ${monthText}</td></tr>
+                            <tr><td colspan="10" class="no-border">&nbsp;</td></tr>
+                            <thead>
+                                <tr>
+                                    <th rowspan="2" class="cell-border">ลำดับที่</th>
+                                    <th rowspan="2" class="cell-border">ชื่อ - นามสกุล</th>
+                                    <th rowspan="2" class="cell-border">วันที่ขออนุมัติทำงานล่วงเวลา</th>
+                                    <th colspan="2" class="cell-border">เวลาที่ทำงานล่วงเวลา</th>
+                                    <th rowspan="2" class="cell-border">งานที่ได้รับปฏิบัติ</th>
+                                    <th colspan="3" class="cell-border">จำนวนชั่วโมงที่ใช้ทำงานล่วงเวลา</th>
+                                    <th rowspan="2" class="cell-border">ลงชื่อผู้ปฏิบัติงาน</th>
+                                </tr>
+                                <tr><th class="cell-border">IN</th><th class="cell-border">OUT</th><th class="cell-border">1 เท่า</th><th class="cell-border">1.5 เท่า</th><th class="cell-border">3 เท่า</th></tr>
+                            </thead>
+                            <tbody>
+                                ${tbody.replace(/<td/g, '<td class="cell-border"').replace(/<td style="text-align:center;">/g, '<td class="cell-border" style="text-align:center;">')}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="6" class="cell-border" style="text-align:right; font-weight:bold;">รวมจำนวนชั่วโมง</td>
+                                    <td class="cell-border">${document.getElementById('sum1').innerText}</td>
+                                    <td class="cell-border">${document.getElementById('sum15').innerText}</td>
+                                    <td class="cell-border">${document.getElementById('sum3').innerText}</td>
+                                    <td class="cell-border"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <br><br>
+                        <table style="border:none;">
+                            <tr>
+                                <td colspan="5" class="no-border" style="text-align:center;">ลงชื่อ................................................ ผู้ขอ</td>
+                                <td class="no-border"></td>
+                                <td colspan="5" class="no-border" style="text-align:center;">ลงชื่อ................................................ ผู้อนุมัติ</td>
+                            </tr>
+                            <tr>
+                                <td colspan="5" class="no-border" style="text-align:center;">( นายนิมิต กาญจนภูวดล )</td>
+                                <td class="no-border"></td>
+                                <td colspan="5" class="no-border" style="text-align:center;">( นายชาญชัย มาศวิเชียร )</td>
+                            </tr>
+                            <tr>
+                                <td colspan="5" class="no-border" style="text-align:center;">ผู้จัดการแผนก/หัวหน้าส่วนงาน</td>
+                                <td class="no-border"></td>
+                                <td colspan="5" class="no-border" style="text-align:center;">ผู้จัดการฝ่าย/ผู้บริหารระดับสูงกว่า</td>
+                            </tr>
+                            <tr>
+                                <td colspan="5" class="no-border" style="text-align:center;">วันที่ ........../........../..........</td>
+                                <td class="no-border"></td>
+                                <td colspan="5" class="no-border" style="text-align:center;">วันที่ ........../........../..........</td>
+                            </tr>
+                        </table>
+                    \x3C/body\x3E\x3C/html\x3E`;
+                tableHtml = tableHtml.replace(/<input[^>]*value="([^"]*)"[^>]*>/g, "$1");
+                const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `OT_Form_TPN_${document.getElementById('targetMonth').value}.xls`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (e) { alert("เกิดข้อผิดพลาดในการสร้าง Excel: " + e.message); }
+        }
+
+        // --- OPEN MODAL (DIRECT CALC) ---
+        function openFormModal() {
+            try {
+                const m = document.getElementById('targetMonth').value;
+                document.getElementById('formMonthLabel').innerText = moment(m).locale('th').format('MMMM YYYY');
+
+                if (globalExtractedName) document.getElementById('formName').value = globalExtractedName;
+
+                const tbody = document.getElementById('formTableBody');
+                tbody.innerHTML = '';
+
+                let i = 1, sum1 = 0, sum15 = 0;
+                const [year, month] = m.split('-');
+                const days = new Date(year, month, 0).getDate();
+
+                for (let d = 1; d <= days; d++) {
+                    const dateStr = `${year}-${month}-${String(d).padStart(2, '0')}`;
+
+                    const inEl = document.getElementById(`in-${dateStr}`);
+                    const outEl = document.getElementById(`out-${dateStr}`);
+                    const holEl = document.getElementById(`holiday-${dateStr}`);
+
+                    const inTime = inEl?.value;
+                    const outTime = outEl?.value;
+                    const isHol = holEl?.checked;
+
+                    // CALCULATE FRESH
+                    const shift = getShift(dateStr);
+                    const stats = calculateDailyStats(dateStr, inTime, outTime, isHol, shift.type);
+
+                    if (stats.ot15 > 0 || stats.ot1 > 0) {
+                        const thDate = moment(dateStr).format('DD/MM/') + (parseInt(year) + 543);
+                        const cleanNote = (stats.note && stats.note !== '-' && stats.note !== 'ปกติ') ? stats.note : 'ปฏิบัติงานคลังน้ำมัน';
+
+                        const tr = `<tr>
+                            <td style="text-align:center;">${i++}</td>
+                            <td style="text-align:center; font-size: 9pt;">${document.getElementById('formName').value}</td>
+                            <td style="text-align:center;">${thDate}</td>
+                            <td style="text-align:center;">${inTime || '-'}</td>
+                            <td style="text-align:center;">${outTime || '-'}</td>
+                            <td style="text-align:center;"><input class="w-full text-center outline-none bg-transparent" value="${cleanNote}" style="border:none; width:100%;"></td>
+                            <td style="text-align:center;">${stats.ot1 || '-'}</td>
+                            <td style="text-align:center;">${stats.ot15 || '-'}</td>
+                            <td style="text-align:center;">-</td>
+                            <td style="text-align:center; font-size: 8pt;"></td>
+                        </tr>`;
+                        tbody.insertAdjacentHTML('beforeend', tr);
+                        sum1 += stats.ot1;
+                        sum15 += stats.ot15;
+                    }
+                }
+
+                while (i <= 15) {
+                    tbody.insertAdjacentHTML('beforeend', `<tr><td style="text-align:center;">${i++}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`);
+                }
+
+
+                document.getElementById('sum1').innerText = sum1;
+                document.getElementById('sum15').innerText = sum15;
+                document.getElementById('sum3').innerText = 0;
+
+                document.getElementById('formModal').classList.remove('hidden');
+            } catch (e) { console.error(e); alert("เกิดข้อผิดพลาดในการเปิดฟอร์ม: " + e.message); }
+        }
+
+        function closeFormModal() { document.getElementById('formModal').classList.add('hidden'); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('btnUpdateTable').addEventListener('click', updateTableBtn);
+            ['targetMonth', 'refShift'].forEach(id => document.getElementById(id).addEventListener('change', generateTable));
+
+            // Sync form name changes dynamically to the table rows
+            document.getElementById('formName').addEventListener('input', (e) => {
+                const nameVal = e.target.value;
+                document.querySelectorAll('#formTableBody tr').forEach(tr => {
+                    if (tr.cells.length > 8 && tr.cells[1].innerText.trim() !== '') {
+                        tr.cells[1].innerText = nameVal;
+                        tr.cells[9].innerText = nameVal; // FIXED: column 9 is the signature column
+                    }
+                });
+            });
+
+            generateTable();
+        });
+    </script>
+</body>
+
+</html>
