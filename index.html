@@ -4,10 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบคำนวณโอที (AI V.72 Full Fixed)</title>
+    <title>ระบบคำนวณโอที — TPN Khon Kaen</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
@@ -16,73 +17,296 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'thai': ['"IBM Plex Sans Thai"', 'Sarabun', 'sans-serif'], 'mono': ['"JetBrains Mono"', 'monospace'] },
+                    colors: {
+                        dark: { 900: '#06080f', 800: '#0c1120', 700: '#111827', 600: '#1a2235', 500: '#243049' },
+                        accent: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' },
+                        glow: { blue: '#3b82f6', amber: '#f59e0b', emerald: '#10b981' }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        body {
-            font-family: 'Sarabun', sans-serif;
+        /* ═══════════════════════════════════════════════
+           MIDNIGHT FUEL — Dark Luxury Theme
+           ═══════════════════════════════════════════════ */
+        :root {
+            --bg-primary: #06080f;
+            --bg-card: rgba(17, 24, 39, 0.6);
+            --bg-card-solid: #111827;
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #f59e0b;
+            --accent-glow: rgba(245, 158, 11, 0.3);
+            --blue: #3b82f6;
+            --emerald: #10b981;
         }
 
+        * {
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'IBM Plex Sans Thai', 'Sarabun', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
 
-        #loadingOverlay {
-            display: none;
+        /* ── Animated Mesh Background ── */
+        body::before {
+            content: '';
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            color: white;
+            z-index: -2;
+            background:
+                radial-gradient(ellipse 80% 60% at 10% 20%, rgba(59, 130, 246, 0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 85% 70%, rgba(245, 158, 11, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 70% 50% at 50% 100%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+            animation: meshMove 20s ease-in-out infinite alternate;
         }
 
-        .new-data {
-            animation: pulse-green 2s infinite;
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background:
+                radial-gradient(circle 600px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(245, 158, 11, 0.03) 0%, transparent 100%);
+            pointer-events: none;
         }
 
-        @keyframes pulse-green {
+        @keyframes meshMove {
             0% {
-                background-color: #dcfce7;
+                transform: scale(1) translate(0, 0);
             }
 
-            50% {
-                background-color: #bbf7d0;
+            33% {
+                transform: scale(1.05) translate(-2%, 1%);
+            }
+
+            66% {
+                transform: scale(1.02) translate(1%, -1%);
             }
 
             100% {
-                background-color: #dcfce7;
+                transform: scale(1) translate(0, 0);
             }
         }
 
-        /* Toast Notification */
-        #toast {
-            visibility: hidden;
-            min-width: 250px;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 8px;
-            padding: 16px;
+        /* Floating particles */
+        .particles {
             position: fixed;
-            z-index: 10000;
-            left: 50%;
-            bottom: 30px;
-            transform: translateX(-50%);
-            font-size: 14px;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: var(--accent);
             opacity: 0;
-            transition: opacity 0.5s, bottom 0.5s;
+            animation: floatParticle linear infinite;
         }
 
-        #toast.show {
-            visibility: visible;
+        .particle:nth-child(1) {
+            left: 10%;
+            animation-duration: 18s;
+            animation-delay: 0s;
+        }
+
+        .particle:nth-child(2) {
+            left: 25%;
+            animation-duration: 22s;
+            animation-delay: 3s;
+        }
+
+        .particle:nth-child(3) {
+            left: 45%;
+            animation-duration: 20s;
+            animation-delay: 7s;
+        }
+
+        .particle:nth-child(4) {
+            left: 65%;
+            animation-duration: 25s;
+            animation-delay: 2s;
+        }
+
+        .particle:nth-child(5) {
+            left: 80%;
+            animation-duration: 19s;
+            animation-delay: 5s;
+        }
+
+        .particle:nth-child(6) {
+            left: 92%;
+            animation-duration: 23s;
+            animation-delay: 9s;
+        }
+
+        @keyframes floatParticle {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 0.6;
+            }
+
+            90% {
+                opacity: 0.2;
+            }
+
+            100% {
+                transform: translateY(-10vh) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* ── Glass Cards ── */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+        }
+
+        /* ── Header ── */
+        .header-gradient {
+            background: linear-gradient(135deg, var(--accent) 0%, #fcd34d 50%, var(--accent) 100%);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 4s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+
+            0%,
+            100% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+
+        /* ── Buttons ── */
+        .btn-glow {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .btn-glow::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            background: linear-gradient(135deg, var(--accent), #fcd34d, var(--accent));
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .btn-glow:hover::before {
             opacity: 1;
-            bottom: 50px;
         }
 
-        /* Tab Styles */
+        .btn-glow:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px var(--accent-glow);
+        }
+
+        .btn-glow:active {
+            transform: scale(0.97);
+        }
+
+        .btn-glass {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .btn-glass:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* ── Inputs ── */
+        .input-dark {
+            background: rgba(0, 0, 0, 0.3) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: var(--text-primary) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .input-dark:focus {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 0 3px var(--accent-glow) !important;
+            outline: none !important;
+        }
+
+        .input-dark::placeholder {
+            color: var(--text-muted) !important;
+        }
+
+        select.input-dark option {
+            background: var(--bg-card-solid);
+            color: var(--text-primary);
+        }
+
+        /* ── Tabs ── */
+        .tab-btn {
+            transition: all 0.3s ease;
+            border: none !important;
+            border-bottom: none !important;
+        }
+
         .tab-btn.active {
-            border-bottom: 2px solid #4f46e5;
-            color: #4f46e5;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05)) !important;
+            color: var(--accent) !important;
+            border: 1px solid rgba(245, 158, 11, 0.3) !important;
+            border-radius: 12px !important;
             font-weight: bold;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
+        }
+
+        .tab-btn:not(.active) {
+            color: var(--text-muted) !important;
+            border-radius: 12px !important;
+        }
+
+        .tab-btn:not(.active):hover {
+            color: var(--text-secondary) !important;
+            background: rgba(255, 255, 255, 0.03);
         }
 
         .tab-content {
@@ -93,14 +317,1190 @@
             display: block;
         }
 
-        /* A4 Paper */
+        /* ── Main Table ── */
+        #mainTable thead {
+            background: #0f172a !important;
+            border-bottom: 2px solid rgba(20, 184, 166, 0.3);
+        }
+
+        #mainTable thead th {
+            color: inherit;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            border-bottom: none;
+            background: transparent !important;
+        }
+
+        #mainTable tbody tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+            transition: all 0.2s ease;
+            background: transparent;
+        }
+
+        #mainTable tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        #mainTable tbody tr:hover {
+            background: rgba(245, 158, 11, 0.05) !important;
+        }
+
+        #mainTable td {
+            color: var(--text-primary);
+        }
+
+        #mainTable input[type="time"] {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        #mainTable input[type="time"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+            outline: none;
+        }
+
+        #mainTable input[type="checkbox"] {
+            accent-color: var(--accent);
+        }
+
+        .new-data {
+            animation: pulseGold 2s infinite;
+        }
+
+        @keyframes pulseGold {
+
+            0%,
+            100% {
+                background-color: rgba(245, 158, 11, 0.08);
+            }
+
+            50% {
+                background-color: rgba(245, 158, 11, 0.18);
+            }
+        }
+
+        /* ── Summary Cards ── */
+        .summary-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 16px;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 2px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent, rgba(255, 255, 255, 0.1));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+
+        .summary-card .value {
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1;
+            text-shadow: 0 0 40px currentColor;
+        }
+
+        /* ── Toast ── */
+        #toast {
+            visibility: hidden;
+            min-width: 280px;
+            background: linear-gradient(135deg, #1a2235, #243049);
+            color: var(--accent);
+            text-align: center;
+            border-radius: 14px;
+            padding: 16px 24px;
+            position: fixed;
+            z-index: 10000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(245, 158, 11, 0.1);
+            transition: opacity 0.4s ease, bottom 0.4s ease;
+        }
+
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+
+        /* ── Loading Overlay ── */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(6, 8, 15, 0.97);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+        }
+
+        /* ── Debug Log ── */
+        .debug-panel {
+            background: rgba(0, 0, 0, 0.5) !important;
+            border: 1px solid rgba(255, 255, 255, 0.06) !important;
+            font-family: 'JetBrains Mono', monospace !important;
+            color: var(--accent) !important;
+        }
+
+        /* ── Textarea ── */
+        textarea.input-dark {
+            font-family: 'JetBrains Mono', monospace !important;
+            font-size: 12px !important;
+        }
+
+        /* ── Scroll-to-top ── */
+        #scrollTop {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #d97706);
+            color: #000;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(16px);
+            transition: all 0.3s ease;
+            z-index: 100;
+            box-shadow: 0 4px 20px var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #scrollTop.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #scrollTop:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px var(--accent-glow);
+        }
+
+        /* ── 3D Spinning Cube (Uiverse bociKond) ── */
+        .cube-spinner {
+            width: 28px;
+            height: 28px;
+            --clr: rgb(94, 234, 212);
+            --clr-alpha: rgba(94, 234, 212, 0.1);
+            animation: cubeSpinner 1.6s infinite ease;
+            transform-style: preserve-3d;
+            flex-shrink: 0;
+        }
+
+        .cube-spinner>div {
+            background-color: var(--clr-alpha);
+            height: 100%;
+            position: absolute;
+            width: 100%;
+            border: 2px solid var(--clr);
+        }
+
+        .cube-spinner div:nth-of-type(1) {
+            transform: translateZ(-14px) rotateY(180deg);
+        }
+
+        .cube-spinner div:nth-of-type(2) {
+            transform: rotateY(-270deg) translateX(50%);
+            transform-origin: top right;
+        }
+
+        .cube-spinner div:nth-of-type(3) {
+            transform: rotateY(270deg) translateX(-50%);
+            transform-origin: center left;
+        }
+
+        .cube-spinner div:nth-of-type(4) {
+            transform: rotateX(90deg) translateY(-50%);
+            transform-origin: top center;
+        }
+
+        .cube-spinner div:nth-of-type(5) {
+            transform: rotateX(-90deg) translateY(50%);
+            transform-origin: bottom center;
+        }
+
+        .cube-spinner div:nth-of-type(6) {
+            transform: translateZ(14px);
+        }
+
+        @keyframes cubeSpinner {
+            0% {
+                transform: rotate(45deg) rotateX(-25deg) rotateY(25deg);
+            }
+
+            50% {
+                transform: rotate(45deg) rotateX(-385deg) rotateY(25deg);
+            }
+
+            100% {
+                transform: rotate(45deg) rotateX(-385deg) rotateY(385deg);
+            }
+        }
+
+        /* ── Title Shimmer Text ── */
+        .title-shimmer {
+            background: linear-gradient(90deg,
+                    #5eead4 0%,
+                    #a7f3d0 20%,
+                    #ffffff 40%,
+                    #a7f3d0 60%,
+                    #5eead4 80%,
+                    #2dd4bf 100%);
+            background-size: 200% auto;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            animation: shimmerText 3s linear infinite;
+        }
+
+        @keyframes shimmerText {
+            0% {
+                background-position: 200% center;
+            }
+
+            100% {
+                background-position: -200% center;
+            }
+        }
+
+        /* ── Star Gold Button (Uiverse DrashtySoni) ── */
+        .btn-star {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            height: 2.8rem;
+            padding: 0 1.5rem;
+            background-size: 300% 300%;
+            backdrop-filter: blur(1rem);
+            border-radius: 5rem;
+            transition: 0.5s;
+            animation: btnStarGrad 5s ease infinite;
+            border: double 3px transparent;
+            background-image: linear-gradient(#212121, #212121),
+                linear-gradient(137.48deg, #ffdb3b 10%, #ff9b17d7 45%, #f9ff41 67%, #feb200d7 87%);
+            background-origin: border-box;
+            background-clip: content-box, border-box;
+            cursor: pointer;
+            position: relative;
+            gap: 8px;
+        }
+
+        .btn-star strong {
+            z-index: 2;
+            font-size: 13px;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .btn-star i {
+            z-index: 2;
+            color: #ffdb3b;
+            font-size: 14px;
+        }
+
+        .btn-star .container-stars {
+            position: absolute;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            transition: 0.5s;
+            backdrop-filter: blur(1rem);
+            border-radius: 5rem;
+        }
+
+        .btn-star .stars-field {
+            position: relative;
+            background: transparent;
+            width: 200rem;
+            height: 200rem;
+        }
+
+        .btn-star .stars-field::after {
+            content: "";
+            position: absolute;
+            top: -10rem;
+            left: -100rem;
+            width: 100%;
+            height: 100%;
+            animation: animStarRotate 90s linear infinite;
+            background-image: radial-gradient(#ffffff 1px, transparent 1%);
+            background-size: 50px 50px;
+        }
+
+        .btn-star .stars-field::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 170%;
+            height: 500%;
+            animation: animStarScroll 60s linear infinite;
+            background-image: radial-gradient(#ffffff 1px, transparent 1%);
+            background-size: 50px 50px;
+            opacity: 0.5;
+        }
+
+        .btn-star .glow-wrap {
+            position: absolute;
+            display: flex;
+            width: 10rem;
+            z-index: 0;
+        }
+
+        .btn-star .circle {
+            width: 100%;
+            height: 24px;
+            filter: blur(1.5rem);
+            animation: pulseGlow 4s infinite;
+            z-index: -1;
+            background: rgba(255, 219, 59, 0.7);
+        }
+
+        .btn-star:hover .container-stars {
+            z-index: 1;
+            background-color: #212121;
+        }
+
+        .btn-star:hover {
+            transform: scale(1.08);
+        }
+
+        .btn-star:active {
+            border: double 3px #FE53BB;
+            animation: none;
+            transform: scale(1);
+        }
+
+        .btn-star:active .circle {
+            background: #FE53BB;
+        }
+
+        @keyframes btnStarGrad {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes animStarRotate {
+            from {
+                transform: rotate(360deg);
+            }
+
+            to {
+                transform: rotate(0);
+            }
+        }
+
+        @keyframes animStarScroll {
+            from {
+                transform: translateY(0);
+            }
+
+            to {
+                transform: translateY(-135rem);
+            }
+        }
+
+        @keyframes pulseGlow {
+            0% {
+                transform: scale(0.75);
+                box-shadow: 0 0 0 0 rgba(255, 219, 59, 0.5);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(255, 219, 59, 0);
+            }
+
+            100% {
+                transform: scale(0.75);
+                box-shadow: 0 0 0 0 rgba(255, 219, 59, 0);
+            }
+        }
+
+        /* ── Red Orbit Button (Uiverse rubyreapergaming) ── */
+        .btn-red-orbit {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            height: 2.8rem;
+            padding: 0 1.4rem;
+            background-size: 300% 300%;
+            backdrop-filter: blur(1rem);
+            border-radius: 5rem;
+            transition: 0.5s;
+            animation: btnRedGrad 5s ease infinite;
+            border: double 3px transparent;
+            background-image: linear-gradient(#161a25, #161a25),
+                linear-gradient(137.48deg, #f5434f 10%, #631e29 45%, #000 67%, #161a25 87%);
+            background-origin: border-box;
+            background-clip: content-box, border-box;
+            cursor: pointer;
+            position: relative;
+            gap: 8px;
+        }
+
+        .btn-red-orbit strong {
+            z-index: 2;
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: #fff;
+            text-shadow: 0 0 4px white;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .btn-red-orbit i {
+            z-index: 2;
+            color: #f5434f;
+            font-size: 14px;
+        }
+
+        .btn-red-orbit .container-stars {
+            position: absolute;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            transition: 0.5s;
+            backdrop-filter: blur(1rem);
+            border-radius: 5rem;
+        }
+
+        .btn-red-orbit .stars-field {
+            position: relative;
+            background: transparent;
+            width: 200rem;
+            height: 200rem;
+        }
+
+        .btn-red-orbit .stars-field::after {
+            content: "";
+            position: absolute;
+            top: -10rem;
+            left: -100rem;
+            width: 100%;
+            height: 100%;
+            animation: animStarRotate 90s linear infinite;
+            background-image: radial-gradient(#ffffff 1px, transparent 1%);
+            background-size: 50px 50px;
+        }
+
+        .btn-red-orbit .stars-field::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 170%;
+            height: 500%;
+            animation: animStarScroll 60s linear infinite;
+            background-image: radial-gradient(#ffffff 1px, transparent 1%);
+            background-size: 50px 50px;
+            opacity: 0.5;
+        }
+
+        .btn-red-orbit .orbit-wrap {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .btn-red-orbit .orbit-circle {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            filter: blur(1.5rem);
+        }
+
+        .btn-red-orbit .orbit-circle:nth-of-type(1) {
+            background: rgba(245, 67, 79, 0.7);
+            animation: orbitSpin 8s linear infinite;
+        }
+
+        .btn-red-orbit .orbit-circle:nth-of-type(2) {
+            background: rgba(99, 30, 41, 0.8);
+            animation: orbitSpin 10s linear infinite reverse;
+        }
+
+        .btn-red-orbit:hover .container-stars {
+            z-index: 1;
+            background-color: #161a25;
+        }
+
+        .btn-red-orbit:hover {
+            transform: scale(1.08);
+        }
+
+        .btn-red-orbit:active {
+            border: double 3px #631e29;
+            animation: none;
+            transform: scale(1);
+        }
+
+        .btn-red-orbit:active .orbit-circle {
+            background: #631e29;
+        }
+
+        @keyframes btnRedGrad {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes orbitSpin {
+            from {
+                transform: rotate(0deg) translateX(50px) rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg) translateX(50px) rotate(-360deg);
+            }
+        }
+
+        /* ── Rainbow Tab Button (Uiverse StealthWorm) ── */
+        .btn-tab-rainbow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            height: 2.6rem;
+            padding: 0 1.2rem;
+            background-size: 300% 300%;
+            cursor: pointer;
+            backdrop-filter: blur(1rem);
+            border-radius: 5rem;
+            transition: 0.5s;
+            animation: btnRainbowGrad 5s ease infinite;
+            border: double 3px transparent;
+            background-image: linear-gradient(#212121, #212121),
+                linear-gradient(137.48deg, #ffdb3b 10%, #fe53bb 45%, #8f51ea 67%, #0044ff 87%);
+            background-origin: border-box;
+            background-clip: content-box, border-box;
+            position: relative;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .btn-tab-rainbow strong {
+            z-index: 2;
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 0 4px white;
+            font-weight: 600;
+        }
+
+        .btn-tab-rainbow i {
+            z-index: 2;
+            color: #fe53bb;
+            font-size: 13px;
+        }
+
+        .btn-tab-rainbow .container-stars {
+            position: absolute;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            transition: 0.5s;
+            backdrop-filter: blur(1rem);
+            border-radius: 5rem;
+        }
+
+        .btn-tab-rainbow .stars-field {
+            position: relative;
+            background: transparent;
+            width: 200rem;
+            height: 200rem;
+        }
+
+        .btn-tab-rainbow .stars-field::after {
+            content: "";
+            position: absolute;
+            top: -10rem;
+            left: -100rem;
+            width: 100%;
+            height: 100%;
+            animation: animStarRotate 90s linear infinite;
+            background-image: radial-gradient(#ffffff 1px, transparent 1%);
+            background-size: 50px 50px;
+        }
+
+        .btn-tab-rainbow .stars-field::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 170%;
+            height: 500%;
+            animation: animStarScroll 60s linear infinite;
+            background-image: radial-gradient(#ffffff 1px, transparent 1%);
+            background-size: 50px 50px;
+            opacity: 0.5;
+        }
+
+        .btn-tab-rainbow .glow-wrap {
+            position: absolute;
+            display: flex;
+            width: 10rem;
+            z-index: 0;
+        }
+
+        .btn-tab-rainbow .circle {
+            width: 100%;
+            height: 24px;
+            filter: blur(1.5rem);
+            animation: pulseRainbow 4s infinite;
+            z-index: -1;
+        }
+
+        .btn-tab-rainbow .circle:nth-of-type(1) {
+            background: rgba(254, 83, 186, 0.6);
+        }
+
+        .btn-tab-rainbow .circle:nth-of-type(2) {
+            background: rgba(142, 81, 234, 0.7);
+        }
+
+        .btn-tab-rainbow:hover .container-stars {
+            z-index: 1;
+            background-color: #212121;
+        }
+
+        .btn-tab-rainbow:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-tab-rainbow:active {
+            border: double 3px #fe53bb;
+            animation: none;
+            transform: scale(1);
+        }
+
+        .btn-tab-rainbow:active .circle {
+            background: #fe53bb;
+        }
+
+        .btn-tab-rainbow.active {
+            border: double 3px rgba(254, 83, 186, 0.6);
+            box-shadow: 0 0 20px rgba(254, 83, 186, 0.2);
+        }
+
+        @keyframes btnRainbowGrad {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes pulseRainbow {
+            0% {
+                transform: scale(0.75);
+                box-shadow: 0 0 0 0 rgba(254, 83, 186, 0.5);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(254, 83, 186, 0);
+            }
+
+            100% {
+                transform: scale(0.75);
+                box-shadow: 0 0 0 0 rgba(254, 83, 186, 0);
+            }
+        }
+
+        /* ── Gold Star Button (Uiverse-inspired) ── */
+        .btn-gold {
+            position: relative;
+            padding: 10px 22px;
+            background: #ffdc00;
+            font-weight: 800;
+            color: #52288e;
+            border: none;
+            border-radius: 2rem;
+            box-shadow: 0 0 0 #ffef8c80;
+            transition: all 0.3s ease-in-out;
+            cursor: pointer;
+            overflow: visible;
+            z-index: 1;
+        }
+
+        .btn-gold:hover {
+            background: #d6b900;
+            box-shadow: 0 0 30px #ffef8c80;
+            transform: translateY(-2px);
+        }
+
+        .btn-gold:active {
+            transform: scale(0.95);
+        }
+
+        .btn-gold .star {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #fffdef;
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            z-index: -1;
+            opacity: 0;
+            transition: all 0s;
+        }
+
+        .btn-gold:hover .star {
+            opacity: 1;
+            filter: drop-shadow(0 0 6px #fffdef);
+        }
+
+        .btn-gold:hover .star-1 {
+            top: -60%;
+            left: -15%;
+            width: 18px;
+            height: 18px;
+            transform: rotate(15deg);
+            transition: all 0.8s cubic-bezier(0, 0.4, 0, 1.01);
+            opacity: 1;
+        }
+
+        .btn-gold:hover .star-2 {
+            top: -35%;
+            left: 80%;
+            width: 10px;
+            height: 10px;
+            transform: rotate(-20deg);
+            transition: all 0.6s cubic-bezier(0, 0.4, 0, 1.01);
+            opacity: 1;
+        }
+
+        .btn-gold:hover .star-3 {
+            top: 70%;
+            left: 90%;
+            width: 7px;
+            height: 7px;
+            transform: rotate(50deg);
+            transition: all 1s cubic-bezier(0, 0.4, 0, 1.01);
+            opacity: 1;
+        }
+
+        .btn-gold:hover .star-4 {
+            top: 80%;
+            left: -10%;
+            width: 14px;
+            height: 14px;
+            transform: rotate(-15deg);
+            transition: all 0.7s cubic-bezier(0, 0.4, 0, 1.01);
+            opacity: 1;
+        }
+
+        .btn-gold:hover .star-1,
+        .btn-gold:hover .star-2,
+        .btn-gold:hover .star-3,
+        .btn-gold:hover .star-4 {
+            animation: starFade 1.5s ease forwards 0.8s;
+        }
+
+        @keyframes starFade {
+            to {
+                opacity: 0;
+            }
+        }
+
+        /* ── Sparkle Dark Button (Uiverse-inspired) ── */
+        .btn-spark {
+            --border_radius: 0.75rem;
+            --transtion: 0.3s ease-in-out;
+            cursor: pointer;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transform-origin: center;
+            padding: 0.7rem 1.4rem;
+            background-color: transparent;
+            border: none;
+            border-radius: var(--border_radius);
+            transform: scale(calc(1 + (var(--active, 0) * 0.05)));
+            transition: transform var(--transtion);
+            color: white;
+        }
+
+        .btn-spark::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-color: hsla(0, 0%, 12%, 1);
+            border-radius: var(--border_radius);
+            box-shadow: inset 0 0.5px hsl(0, 0%, 100%),
+                inset 0 -1px 2px 0 hsl(0, 0%, 0%),
+                0px 4px 10px -4px hsla(0, 0%, 0%, calc(1 - var(--active, 0))),
+                0 0 0 calc(var(--active, 0) * 0.35rem) hsla(260, 97%, 50%, 0.65);
+            transition: all var(--transtion);
+            z-index: 0;
+        }
+
+        .btn-spark::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-color: hsla(260, 97%, 61%, 0.75);
+            background-image:
+                radial-gradient(at 51% 89%, hsla(266, 45%, 74%, 1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(266, 36%, 60%, 1) 0px, transparent 50%),
+                radial-gradient(at 22% 91%, hsla(266, 36%, 60%, 1) 0px, transparent 50%);
+            background-position: top;
+            opacity: var(--active, 0);
+            border-radius: var(--border_radius);
+            transition: opacity var(--transtion);
+            z-index: 2;
+        }
+
+        .btn-spark:is(:hover, :focus-visible) {
+            --active: 1;
+        }
+
+        .btn-spark:active {
+            transform: scale(1);
+        }
+
+        .btn-spark:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .btn-spark .dots_border {
+            overflow: hidden;
+            position: absolute;
+            inset: -1px;
+            background-color: transparent;
+            border-radius: var(--border_radius);
+            z-index: -10;
+        }
+
+        .btn-spark .dots_border::before {
+            content: "";
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform-origin: left;
+            width: 100%;
+            height: 2rem;
+            background-color: white;
+            mask: linear-gradient(transparent 0%, white 120%);
+            animation: rotateDots 2s linear infinite;
+        }
+
+        @keyframes rotateDots {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .btn-spark .sparkle-icon {
+            position: relative;
+            z-index: 10;
+            width: 1.2rem;
+            height: 1.2rem;
+            color: white;
+        }
+
+        .btn-spark:is(:hover, :focus) .sparkle-icon {
+            animation: sparkPulse 1.5s linear 0.5s infinite;
+        }
+
+        @keyframes sparkPulse {
+
+            0%,
+            34%,
+            71%,
+            100% {
+                transform: scale(1);
+            }
+
+            17% {
+                transform: scale(1.3);
+            }
+
+            49% {
+                transform: scale(1.2);
+            }
+
+            83% {
+                transform: scale(1.25);
+            }
+        }
+
+        .btn-spark .text_button {
+            position: relative;
+            z-index: 10;
+            background-image: linear-gradient(90deg,
+                    hsla(0, 0%, 100%, 1) 0%,
+                    hsla(0, 0%, 100%, var(--active, 0)) 120%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: transparent;
+        }
+
+        /* ── Animated Glow Border (OT Table) ── */
+        .glow-border-wrap {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            padding: 2px;
+        }
+
+        .glow-border-wrap::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200%;
+            height: 200%;
+            transform: translate(-50%, -50%) rotate(0deg);
+            background: conic-gradient(rgba(0, 0, 0, 0),
+                    #7a5af8 5%,
+                    rgba(0, 0, 0, 0) 14%,
+                    rgba(0, 0, 0, 0) 50%,
+                    #f59e0b 60%,
+                    rgba(0, 0, 0, 0) 64%);
+            animation: rotateBorder 6s linear infinite;
+            z-index: 0;
+        }
+
+        .glow-border-wrap::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200%;
+            height: 200%;
+            transform: translate(-50%, -50%) rotate(0deg);
+            background: conic-gradient(rgba(0, 0, 0, 0),
+                    rgba(122, 90, 248, 0.3) 5%,
+                    rgba(0, 0, 0, 0) 14%,
+                    rgba(0, 0, 0, 0) 50%,
+                    rgba(245, 158, 11, 0.3) 60%,
+                    rgba(0, 0, 0, 0) 64%);
+            filter: blur(25px);
+            opacity: 0.5;
+            animation: rotateBorder 6s linear infinite;
+            z-index: 0;
+        }
+
+        .glow-border-inner {
+            position: relative;
+            z-index: 1;
+            background: var(--bg-card-solid);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        @keyframes rotateBorder {
+            100% {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        /* ── Neumorphism Input Card ── */
+        .neu-card {
+            background: #e0e0e0;
+            border-radius: 24px;
+            box-shadow: 12px 12px 24px #bebebe, -12px -12px 24px #ffffff;
+            border: none;
+            color: #333;
+        }
+
+        .neu-card:hover {
+            box-shadow: 14px 14px 28px #b0b0b0, -14px -14px 28px #ffffff;
+        }
+
+        .neu-card label,
+        .neu-card h3,
+        .neu-card .text-sm,
+        .neu-card p {
+            color: #444 !important;
+        }
+
+        .neu-card h3 i {
+            color: #d97706 !important;
+        }
+
+        .neu-input {
+            background: #e0e0e0 !important;
+            border: none !important;
+            border-radius: 14px !important;
+            box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff !important;
+            color: #333 !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .neu-input:focus {
+            box-shadow: inset 3px 3px 6px #b0b0b0, inset -3px -3px 6px #ffffff, 0 0 0 3px rgba(245, 158, 11, 0.3) !important;
+            outline: none !important;
+        }
+
+        .neu-input::placeholder {
+            color: #999 !important;
+        }
+
+        select.neu-input option {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .neu-card .tab-btn {
+            color: #666 !important;
+        }
+
+        .neu-card .tab-btn.active {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.08)) !important;
+            color: #b45309 !important;
+            border: 1px solid rgba(217, 119, 6, 0.3) !important;
+            box-shadow: 4px 4px 8px #bebebe, -4px -4px 8px #ffffff, 0 0 15px rgba(245, 158, 11, 0.08) !important;
+        }
+
+        .neu-card .tab-btn:not(.active):hover {
+            color: #555 !important;
+            background: rgba(0, 0, 0, 0.03) !important;
+        }
+
+        .neu-card .debug-panel {
+            background: rgba(30, 30, 30, 0.9) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            color: #f59e0b !important;
+        }
+
+        .neu-card .border-dashed {
+            border-color: #bbb !important;
+        }
+
+        .neu-card .border-dashed:hover {
+            border-color: #d97706 !important;
+            background: rgba(245, 158, 11, 0.05) !important;
+        }
+
+        .neu-card .border-dashed i,
+        .neu-card .border-dashed p {
+            color: #888 !important;
+        }
+
+        .neu-card .border-dashed:hover i,
+        .neu-card .border-dashed:hover p {
+            color: #b45309 !important;
+        }
+
+        /* ── Animations ── */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.6s ease-out both;
+        }
+
+        .delay-1 {
+            animation-delay: 0.1s;
+        }
+
+        .delay-2 {
+            animation-delay: 0.2s;
+        }
+
+        .delay-3 {
+            animation-delay: 0.3s;
+        }
+
+        .delay-4 {
+            animation-delay: 0.4s;
+        }
+
+        /* ── Footer ── */
+        .site-footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .site-footer .ver {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* ══════════════════════════════════════════
+           A4 Paper & Print — UNTOUCHED ZONE
+           ══════════════════════════════════════════ */
         .a4-paper {
             background: white;
             width: 210mm;
             min-height: 297mm;
             margin: 20px auto;
             padding: 10mm 15mm;
-            /* slightly reduced top/bottom padding */
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             position: relative;
             color: black;
@@ -108,7 +1508,6 @@
             box-sizing: border-box;
         }
 
-        /* Form Specific Table */
         .form-table {
             width: 100%;
             border-collapse: collapse;
@@ -123,9 +1522,7 @@
             line-height: 1.2;
             vertical-align: middle;
             word-wrap: break-word;
-            /* Allow wrapping */
             white-space: normal;
-            /* Remove nowrap to prevent breaking out of table */
         }
 
         .form-table th {
@@ -140,7 +1537,6 @@
             @page {
                 size: A4 portrait;
                 margin: 0;
-                /* Let a4-paper handle padding */
             }
 
             body * {
@@ -179,55 +1575,114 @@
                 padding: 15mm;
                 transform: none;
             }
+
+            body::before,
+            body::after,
+            .particles {
+                display: none !important;
+            }
+
+            #scrollTop {
+                display: none !important;
+            }
         }
     </style>
 </head>
 
-<body class="bg-gray-100 text-gray-800">
+<body class="text-slate-200">
+
+    <!-- Floating Particles -->
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <!-- Scroll to Top -->
+    <button id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+        <i class="fas fa-chevron-up"></i>
+    </button>
 
     <div id="loadingOverlay">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-amber-400 mb-4"></div>
         <h2 class="text-2xl font-bold text-white">กำลังประมวลผล...</h2>
-        <p class="text-gray-300 mt-2 text-sm" id="loadingStatus">Processing...</p>
+        <p class="text-slate-400 mt-2 text-sm" id="loadingStatus">Processing...</p>
     </div>
 
     <div id="toast"><i class="fas fa-check-circle mr-2"></i>อัปเดตตารางเรียบร้อย</div>
 
-    <div class="container mx-auto px-4 py-6 max-w-5xl">
-        <header class="flex justify-between items-center mb-6 sticky top-0 bg-gray-100 z-10 py-2">
-            <div>
-                <h1 class="text-2xl font-bold text-indigo-800"><i
-                        class="fas fa-calculator mr-2"></i>ระบบคำนวณโอที (V.72)
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+
+        <!-- ═══ HEADER ═══ -->
+        <header class="relative flex justify-between items-center mb-8 sticky top-0 z-10 py-3 px-5
+                       bg-slate-900 border-2 border-teal-600 rounded-2xl overflow-hidden
+                       transform transition-all duration-500 hover:border-emerald-400
+                       before:absolute before:w-10 before:h-10 before:right-2 before:top-2 before:z-0 before:bg-indigo-500 before:rounded-full before:blur-lg before:transition-all before:duration-500
+                       after:absolute after:z-0 after:w-14 after:h-14 after:bg-teal-400 after:right-6 after:top-3 after:rounded-full after:blur-lg after:transition-all after:duration-500
+                       hover:before:right-10 hover:before:-bottom-4 hover:before:blur hover:after:-right-6 hover:after:scale-110
+                       animate-in">
+            <div class="relative z-10">
+                <h1 class="text-2xl font-bold flex items-center gap-3">
+                    <span class="cube-spinner">
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                    </span>
+                    <span class="title-shimmer">ระบบคำนวณโอที</span>
                 </h1>
-                <p class="text-sm text-gray-500">Full Fixed (No missing functions)</p>
+                <p class="text-xs text-teal-600 mt-1 font-mono">TPN Khon Kaen — V.72</p>
             </div>
-            <div class="flex gap-2">
-                    <button onclick="window.location.reload()"
-                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm"><i
-                        class="fas fa-sync mr-1"></i>รีเซ็ต</button>
-                <button onclick="openFormModal()"
-                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow flex items-center animate-bounce">
-                    <i class="fas fa-file-invoice mr-2"></i>สร้างใบเบิก
+            <div class="relative z-10 flex gap-3">
+                <button onclick="window.location.reload()" class="btn-spark px-4 py-2 rounded-xl text-sm">
+                    <div class="dots_border"></div>
+                    <i class="fas fa-sync sparkle-icon"></i>
+                    <span class="text_button">รีเซ็ต</span>
+                </button>
+                <button onclick="openFormModal()" class="btn-star">
+                    <div class="container-stars">
+                        <div class="stars-field"></div>
+                    </div>
+                    <div class="glow-wrap">
+                        <div class="circle"></div>
+                        <div class="circle"></div>
+                    </div>
+                    <i class="fas fa-file-invoice"></i>
+                    <strong>สร้างใบเบิก</strong>
                 </button>
             </div>
         </header>
 
-        <div class="bg-white rounded-xl shadow p-6 mb-6">
-            <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h3 class="text-sm font-bold text-blue-700 mb-2 flex items-center">
-                    <i class="fas fa-calendar-alt mr-2"></i>
+        <!-- ═══ SETTINGS + INPUT ═══ -->
+        <div
+            class="relative bg-slate-900 border-2 border-teal-600 rounded-2xl overflow-hidden p-6 mb-6 animate-in delay-1
+                    transform transition-all duration-500 hover:border-emerald-400
+                    before:absolute before:w-12 before:h-12 before:right-3 before:top-3 before:z-0 before:bg-indigo-500 before:rounded-full before:blur-lg before:transition-all before:duration-500
+                    after:absolute after:z-0 after:w-16 after:h-16 after:bg-teal-400 after:right-8 after:top-5 after:rounded-full after:blur-lg after:transition-all after:duration-500
+                    hover:before:right-12 hover:before:-bottom-4 hover:before:blur hover:after:-right-6 hover:after:scale-110">
+
+            <!-- Month & Shift Settings -->
+            <div class="relative z-10 mb-6 p-4 rounded-xl border border-teal-500/20 bg-teal-500/5">
+                <h3 class="text-sm font-bold text-teal-300 mb-3 flex items-center gap-2">
+                    <i class="fas fa-calendar-alt"></i>
                     ตั้งค่าเดือนและกะเริ่มต้น
                 </h3>
                 <div class="flex gap-4 flex-wrap items-end">
                     <div class="flex-1 min-w-[200px]">
-                        <label class="block text-xs text-gray-600 font-bold mb-1">เลือกเดือนที่ต้องการคำนวณ</label>
+                        <label class="block text-xs text-slate-400 font-bold mb-1">เลือกเดือนที่ต้องการคำนวณ</label>
                         <input type="month" id="targetMonth" value="2026-01"
-                            class="w-full border border-blue-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            class="w-full bg-slate-800 border border-slate-600 text-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all">
                     </div>
                     <div class="flex-1 min-w-[200px]">
-                        <label class="block text-xs text-gray-600 font-bold mb-1">วันที่ 1 ของเดือนนี้ เป็นกะอะไร?</label>
+                        <label class="block text-xs text-slate-400 font-bold mb-1">วันที่ 1 ของเดือนนี้
+                            เป็นกะอะไร?</label>
                         <select id="refShift"
-                            class="w-full border border-blue-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            class="w-full bg-slate-800 border border-slate-600 text-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all">
                             <option value="0">เช้า 1 (M1)</option>
                             <option value="1">เช้า 2 (M2)</option>
                             <option value="2">เช้า 3 (M3)</option>
@@ -239,125 +1694,183 @@
                         </select>
                     </div>
                     <div>
-                        <button id="btnUpdateTable"
-                            class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 font-bold shadow flex items-center transition-transform active:scale-95">
-                            <i class="fas fa-sync-alt mr-2"></i>อัปเดตตาราง
+                        <button id="btnUpdateTable" class="btn-red-orbit transition-transform active:scale-95">
+                            <div class="container-stars">
+                                <div class="stars-field"></div>
+                            </div>
+                            <div class="orbit-wrap">
+                                <div class="orbit-circle"></div>
+                                <div class="orbit-circle"></div>
+                            </div>
+                            <i class="fas fa-sync-alt"></i>
+                            <strong>อัปเดตตาราง</strong>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div class="flex border-b border-gray-200 mb-4">
+            <div class="relative z-10 flex gap-3 mb-5">
                 <button onclick="switchTab('paste')" id="tab-paste"
-                    class="tab-btn active px-4 py-2 text-sm text-gray-600 hover:text-indigo-600 focus:outline-none flex-1 md:flex-none">
-                    <i class="fas fa-paste mr-2"></i>วิธีที่ 1: ก๊อปวาง (Log ดิบ)
+                    class="btn-tab-rainbow active focus:outline-none md:flex-none">
+                    <div class="container-stars">
+                        <div class="stars-field"></div>
+                    </div>
+                    <div class="glow-wrap">
+                        <div class="circle"></div>
+                        <div class="circle"></div>
+                    </div>
+                    <i class="fas fa-paste"></i>
+                    <strong>วิธีที่ 1: ก๊อปวาง</strong>
                 </button>
                 <button onclick="switchTab('scan')" id="tab-scan"
-                    class="tab-btn px-4 py-2 text-sm text-gray-600 hover:text-indigo-600 focus:outline-none flex-1 md:flex-none">
-                    <i class="fas fa-camera mr-2"></i>วิธีที่ 2: สแกนรูป
+                    class="btn-tab-rainbow focus:outline-none md:flex-none">
+                    <div class="container-stars">
+                        <div class="stars-field"></div>
+                    </div>
+                    <div class="glow-wrap">
+                        <div class="circle"></div>
+                        <div class="circle"></div>
+                    </div>
+                    <i class="fas fa-camera"></i>
+                    <strong>วิธีที่ 2: สแกนรูป</strong>
                 </button>
             </div>
 
-            <div id="content-paste" class="tab-content active">
-                <label class="block text-sm font-semibold text-gray-700 mb-2">วางข้อมูล Log ที่นี่:</label>
+            <!-- Tab: Paste -->
+            <div id="content-paste" class="tab-content active relative z-10">
+                <label class="block text-sm font-semibold text-emerald-300 mb-2">วางข้อมูล Log ที่นี่:</label>
                 <textarea id="pasteInput"
-                    class="w-full h-40 border border-indigo-200 rounded-lg p-3 text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-indigo-50"
+                    class="w-full h-40 bg-slate-800 border border-slate-600 text-slate-200 rounded-xl p-4 text-xs font-mono focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
                     placeholder="วางข้อมูลดิบได้เลย..."></textarea>
                 <div class="flex gap-2 mt-3">
                     <button onclick="processCopiedText()"
-                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-bold shadow transition-all">
-                        <i class="fas fa-file-import mr-2"></i>
-                        แกะรหัสและดึงข้อมูล
+                        class="flex-1 btn-spark py-3 rounded-xl shadow-lg transition-all">
+                        <div class="dots_border"></div>
+                        <i class="fas fa-file-import sparkle-icon"></i>
+                        <span class="text_button">แกะรหัสและดึงข้อมูล</span>
                     </button>
                 </div>
                 <div class="mt-4 hidden" id="textDebugContainer">
-                    <p class="text-xs text-gray-500 mb-1 flex justify-between">
+                    <p class="text-xs text-slate-500 mb-1 flex justify-between">
                         <span>สถานะการแกะข้อมูล (Log):</span>
-                        <span class="cursor-pointer text-indigo-500"
-                            onclick="document.getElementById('textDebugLog').innerHTML=''">[ล้างค่า]</span>
+                        <span class="cursor-pointer text-teal-400 hover:text-teal-300"
+                            onclick="document.getElementById('textDebugLog').innerHTML=''"> [ล้างค่า]</span>
                     </p>
-                    <div class="p-3 bg-gray-800 text-green-400 rounded border border-gray-700 text-xs font-mono h-48 overflow-y-auto"
-                        id="textDebugLog"></div>
+                    <div class="debug-panel p-3 rounded-xl text-xs h-48 overflow-y-auto" id="textDebugLog"></div>
                 </div>
             </div>
 
-            <div id="content-scan" class="tab-content hidden">
-                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 cursor-pointer"
+            <!-- Tab: Scan -->
+            <div id="content-scan" class="tab-content hidden relative z-10">
+                <div class="border-2 border-dashed border-teal-700 rounded-xl p-8 text-center hover:border-emerald-400 hover:bg-emerald-500/5 cursor-pointer transition-all duration-300"
                     onclick="document.getElementById('imageInput').click()">
                     <input type="file" id="imageInput" accept="image/*" class="hidden"
                         onchange="handleImageUpload(event)">
-                    <p class="font-bold text-gray-600">แตะเลือกรูปภาพ</p>
+                    <i class="fas fa-cloud-upload-alt text-3xl text-teal-500 mb-3"></i>
+                    <p class="font-bold text-teal-300">แตะเลือกรูปภาพ</p>
+                    <p class="text-xs text-slate-500 mt-1">รองรับ JPG, PNG, WEBP</p>
                 </div>
                 <div class="mt-4 hidden" id="imagePreviewContainer">
-                    <img id="imagePreview" class="max-h-48 mx-auto rounded-lg shadow">
+                    <img id="imagePreview" class="max-h-48 mx-auto rounded-xl shadow-lg border border-teal-500/20">
                     <canvas id="preprocessCanvas" class="hidden"></canvas>
                 </div>
                 <div class="mt-4">
-                    <p class="text-xs text-gray-500 mb-1 flex justify-between">
-                        <span>สถานะการอ่าน:</span><span class="cursor-pointer text-indigo-500"
+                    <p class="text-xs text-slate-500 mb-1 flex justify-between">
+                        <span>สถานะการอ่าน:</span><span class="cursor-pointer text-teal-400 hover:text-teal-300"
                             onclick="document.getElementById('debugLog').innerHTML=''">[Clear]</span>
                     </p>
-                    <div class="p-3 bg-gray-800 text-green-400 rounded border border-gray-700 text-xs font-mono h-32 overflow-y-auto"
-                        id="debugLog">[Ready]</div>
+                    <div class="debug-panel p-3 rounded-xl text-xs h-32 overflow-y-auto" id="debugLog">[Ready]</div>
                 </div>
                 <button onclick="startOCR()" id="scanBtn"
-                    class="w-full mt-4 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-lg font-bold shadow disabled:opacity-50"
-                    disabled>
-                    <i class="fas fa-magic mr-2"></i>สแกนรูปภาพ
+                    class="w-full mt-4 btn-spark py-3 rounded-xl shadow-lg disabled:opacity-50 transition-all" disabled>
+                    <div class="dots_border"></div>
+                    <i class="fas fa-magic sparkle-icon"></i>
+                    <span class="text_button">สแกนรูปภาพ</span>
                 </button>
                 <div id="ocrResultContainer" class="mt-4 hidden">
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">ผลลัพธ์ OCR
+                    <label class="block text-sm font-semibold text-emerald-300 mb-2">ผลลัพธ์ OCR
                         (สามารถแก้ไขข้อความที่อ่านผิดได้ก่อนส่ง):</label>
                     <textarea id="ocrResultText"
-                        class="w-full h-48 border border-green-300 rounded-lg p-3 text-xs font-mono bg-green-50 focus:ring-2 focus:ring-green-500"
+                        class="w-full h-48 bg-slate-800 border border-slate-600 text-slate-200 rounded-xl p-3 text-xs font-mono focus:ring-2 focus:ring-teal-500 outline-none transition-all"
                         placeholder="ผลลัพธ์จะแสดงที่นี่... (คุณสามารถตรวจสอบและแก้ไขตัวเลขที่ผิดพลาดได้)"></textarea>
                     <div class="flex gap-2 mt-2">
                         <button onclick="downloadOcrTxt()"
-                            class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-bold shadow text-sm transition-all">
-                            <i class="fas fa-download mr-2"></i> ดาวน์โหลด .TXT
+                            class="flex-1 btn-spark py-2.5 rounded-xl shadow transition-all">
+                            <div class="dots_border"></div>
+                            <i class="fas fa-download sparkle-icon"></i>
+                            <span class="text_button">ดาวน์โหลด .TXT</span>
                         </button>
                         <button onclick="sendOcrToPaste()"
-                            class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-bold shadow text-sm transition-all">
-                            <i class="fas fa-paste mr-2"></i> ส่งไปวิธีที่ 1
-                            (ก๊อปวาง)
+                            class="flex-1 btn-spark py-2.5 rounded-xl shadow transition-all">
+                            <div class="dots_border"></div>
+                            <i class="fas fa-paste sparkle-icon"></i>
+                            <span class="text_button">ส่งไปวิธีที่ 1</span>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow overflow-hidden mb-6">
-            <div class="overflow-x-auto max-h-[600px]">
-                <table class="w-full text-sm text-left relative" id="mainTable">
-                    <thead class="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0 z-10 shadow-sm">
-                        <tr>
-                            <th class="px-3 py-2 w-16 text-center">วัน</th>
-                            <th class="px-3 py-2 w-20 text-center">กะ</th>
-                            <th class="px-3 py-2 w-16 text-center text-xs">วันหยุด?</th>
-                            <th class="px-3 py-2 w-24 text-center bg-indigo-50">เวลาเข้า</th>
-                            <th class="px-3 py-2 w-24 text-center bg-indigo-50">เวลาออก</th>
-                            <th class="px-3 py-2 text-center w-20">OT 1.5</th>
-                            <th class="px-3 py-2 text-center w-20">OT 1.0</th>
-                            <th class="px-3 py-2 w-32 text-left">หมายเหตุ (Auto)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
+        <!-- ═══ OT TABLE ═══ -->
+        <div class="glow-border-wrap mb-6 animate-in delay-2">
+            <div class="glow-border-inner">
+                <div class="overflow-x-auto max-h-[600px]">
+                    <table class="w-full text-sm text-left relative" id="mainTable">
+                        <thead class="text-xs sticky top-0 z-10">
+                            <tr class="bg-slate-900 border-b-2 border-teal-500/40">
+                                <th
+                                    class="px-3 py-3 text-center w-16 text-teal-300 font-bold text-xs uppercase tracking-wider">
+                                    วัน</th>
+                                <th
+                                    class="px-2 py-3 text-center w-16 text-teal-300 font-bold text-xs uppercase tracking-wider">
+                                    กะ</th>
+                                <th
+                                    class="px-2 py-3 text-center w-12 text-teal-300 font-bold text-xs uppercase tracking-wider">
+                                    วันหยุด?</th>
+                                <th
+                                    class="px-3 py-3 w-24 text-center text-teal-300 font-bold text-xs uppercase tracking-wider">
+                                    เวลาเข้า</th>
+                                <th
+                                    class="px-3 py-3 w-24 text-center text-teal-300 font-bold text-xs uppercase tracking-wider">
+                                    เวลาออก</th>
+                                <th
+                                    class="px-3 py-3 text-center w-20 text-emerald-300 font-bold text-xs uppercase tracking-wider">
+                                    OT 1.5</th>
+                                <th
+                                    class="px-3 py-3 text-center w-20 text-amber-300 font-bold text-xs uppercase tracking-wider">
+                                    OT 1.0</th>
+                                <th
+                                    class="px-3 py-3 w-32 text-left text-slate-400 font-bold text-xs uppercase tracking-wider">
+                                    หมายเหตุ (Auto)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 mb-20">
-            <div class="bg-blue-600 text-white p-4 rounded-xl shadow text-center">
-                <p class="text-xs opacity-80 uppercase tracking-wide">OT ปกติ (1.5)</p>
-                <p class="text-4xl font-bold mt-1" id="total15">0</p>
-                <p class="text-xs mt-1">ชั่วโมง</p>
+        <!-- ═══ SUMMARY CARDS ═══ -->
+        <div class="grid grid-cols-2 gap-5 mb-6 animate-in delay-3">
+            <div
+                class="summary-card bg-gradient-to-br from-blue-600/80 to-blue-800/80 text-white p-6 text-center shadow-lg shadow-blue-500/10">
+                <p class="text-xs opacity-70 uppercase tracking-widest font-medium">OT ปกติ (1.5)</p>
+                <p class="value mt-2 text-blue-200" id="total15">0</p>
+                <p class="text-xs mt-1 opacity-60">ชั่วโมง</p>
             </div>
-            <div class="bg-yellow-500 text-white p-4 rounded-xl shadow text-center">
-                <p class="text-xs opacity-80 uppercase tracking-wide">OT วันหยุด (1.0)</p>
-                <p class="text-4xl font-bold mt-1" id="total1">0</p>
-                <p class="text-xs mt-1">ชั่วโมง</p>
+            <div
+                class="summary-card bg-gradient-to-br from-amber-500/80 to-amber-700/80 text-white p-6 text-center shadow-lg shadow-amber-500/10">
+                <p class="text-xs opacity-70 uppercase tracking-widest font-medium">OT วันหยุด (1.0)</p>
+                <p class="value mt-2 text-amber-200" id="total1">0</p>
+                <p class="text-xs mt-1 opacity-60">ชั่วโมง</p>
             </div>
         </div>
+
+        <!-- ═══ FOOTER ═══ -->
+        <footer class="site-footer animate-in delay-4">
+            <p>ระบบคำนวณโอที <span class="ver">V.72</span> — ฝ่ายปฏิบัติการคลังน้ำมันขอนแก่น</p>
+            <p class="mt-1 opacity-60">Midnight Fuel Edition ✦</p>
+        </footer>
 
     </div>
 
@@ -398,23 +1911,24 @@
                         <div class="font-bold text-base">
                             ฝ่ายปฏิบัติการคลังน้ำมันขอนแก่น
                         </div>
-                        <div class="text-sm mt-1">ประจำเดือน <span id="formMonthLabel"
-                                class="font-bold"></span></div>
+                        <div class="text-sm mt-1">ประจำเดือน <span id="formMonthLabel" class="font-bold"></span>
+                        </div>
                     </div>
                     <div style="width: 50px;"></div>
                 </div>
                 <div class="mb-6 grid grid-cols-2 gap-y-4 gap-x-4">
-                    <div class="flex items-end"><span class="font-bold min-w-24 mr-2">ชื่อ-สกุล:</span><input type="text" id="formName"
+                    <div class="flex items-end"><span class="font-bold min-w-24 mr-2">ชื่อ-สกุล:</span><input
+                            type="text" id="formName"
                             class="flex-1 border-b border-black outline-none px-2 py-0 bg-transparent font-medium w-32"
                             value="PIPHATPHONG WORADEE"></div>
-                    <div class="flex items-end"><span class="font-bold min-w-24 mr-2">รหัสพนักงาน:</span><input type="text"
-                            class="flex-1 border-b border-black outline-none px-2 py-0 bg-transparent w-32"
+                    <div class="flex items-end"><span class="font-bold min-w-24 mr-2">รหัสพนักงาน:</span><input
+                            type="text" class="flex-1 border-b border-black outline-none px-2 py-0 bg-transparent w-32"
                             placeholder="1468003"></div>
                     <div class="flex items-end"><span class="font-bold min-w-24 mr-2">ตำแหน่ง:</span><input type="text"
                             class="flex-1 border-b border-black outline-none px-2 py-0 bg-transparent w-32"
                             value="พนักงานปฏิบัติการ"></div>
-                    <div class="flex items-end"><span class="font-bold min-w-24 mr-2">สังกัด:</span><input
-                            type="text" class="flex-1 border-b border-black outline-none px-2 py-0 bg-transparent w-32"
+                    <div class="flex items-end"><span class="font-bold min-w-24 mr-2">สังกัด:</span><input type="text"
+                            class="flex-1 border-b border-black outline-none px-2 py-0 bg-transparent w-32"
                             value="คลังน้ำมันขอนแก่น"></div>
                 </div>
                 <table class="form-table mb-4" id="exportTable" style="width: 100%; table-layout: fixed;">
@@ -475,11 +1989,17 @@
                 <div class="notes mt-6 text-xs text-gray-600 px-4">
                     <strong>***หมายเหตุ</strong>
                     <ol class="ml-4 mt-1">
-                        <li>หัวหน้าส่วนงานที่มีความจำเป็นต้องให้พนักงานปฏิบัติงานล่วงเวลา/ปฏิบัติงานในวันหยุดต้องจัดทำรายละเอียดเสนอผู้อนุมัติล่วงหน้า</li>
-                        <li>ส่งต้นฉบับให้แผนกธุรการ แผนกบุคคล ฝ่ายปฏิบัติการส่วนภูมิภาค อย่างน้อยก่อนเวลา 17.00 น. ของทุกวัน</li>
-                        <li>ฝ่ายคลังส่งสำเนาแจ้งแผนกธุรการ แผนกบุคคล ฝ่ายปฏิบัติการส่วนภูมิภาคตามลำดับเพื่อดำเนินการ</li>
-                        <li>เวลาที่เริ่มทำงานล่วงเวลา หมายถึงเวลาที่เริ่มทำงานล่วงเวลาจริงที่นอกเหนือจากการทำงานปกติ เช่น 08:30-17:30 น. แต่ถ้ามีงานเร่งด่วนอาจเริ่มทำงานล่วงเวลาได้ทันที</li>
-                        <li>เวลาที่เลิกทำงานล่วงเวลา หมายถึงเวลาที่พนักงานปฏิบัติงานจนถึงเวลาเลิกงานที่แจ้งไว้ข้างต้น หรือทำงานจนเสร็จสิ้นงาน</li>
+                        <li>หัวหน้าส่วนงานที่มีความจำเป็นต้องให้พนักงานปฏิบัติงานล่วงเวลา/ปฏิบัติงานในวันหยุดต้องจัดทำรายละเอียดเสนอผู้อนุมัติล่วงหน้า
+                        </li>
+                        <li>ส่งต้นฉบับให้แผนกธุรการ แผนกบุคคล ฝ่ายปฏิบัติการส่วนภูมิภาค อย่างน้อยก่อนเวลา 17.00 น.
+                            ของทุกวัน</li>
+                        <li>ฝ่ายคลังส่งสำเนาแจ้งแผนกธุรการ แผนกบุคคล ฝ่ายปฏิบัติการส่วนภูมิภาคตามลำดับเพื่อดำเนินการ
+                        </li>
+                        <li>เวลาที่เริ่มทำงานล่วงเวลา หมายถึงเวลาที่เริ่มทำงานล่วงเวลาจริงที่นอกเหนือจากการทำงานปกติ
+                            เช่น 08:30-17:30 น. แต่ถ้ามีงานเร่งด่วนอาจเริ่มทำงานล่วงเวลาได้ทันที</li>
+                        <li>เวลาที่เลิกทำงานล่วงเวลา
+                            หมายถึงเวลาที่พนักงานปฏิบัติงานจนถึงเวลาเลิกงานที่แจ้งไว้ข้างต้น
+                            หรือทำงานจนเสร็จสิ้นงาน</li>
                     </ol>
                 </div>
             </div>
@@ -706,7 +2226,7 @@
 
                 // 5. Fallback 3: Copied directly from Table output (e.g. 2 ???.  07:01 15:00)
                 if (allTimes.length === 0) {
-                    const regexTableApp = /(\d{1,2})\s+[ก-ฮ](\d{2})/g;
+                    const regexTableApp = /(\d{1,2})\s+[^\d]+(\d{1,2})[:.](\d{2})\s+(\d{1,2})[:.](\d{2})/g;
                     while ((match = regexTableApp.exec(rawText)) !== null) {
                         const dy = match[1].padStart(2, '0');
                         const dt1 = moment(targetYear + '-' + String(targetMonth).padStart(2, '0') + '-' + dy + 'T' + match[2].padStart(2, '0') + ':' + match[3] + ':00');
@@ -799,8 +2319,8 @@
             try {
                 console.log("SWITCH_TAB CALLED:", tab);
                 // Remove active class from all tabs and contents
-                document.querySelectorAll('.tab-btn').forEach(b => {
-                    b.classList.remove('active', 'text-indigo-600', 'border-b-2', 'border-indigo-600');
+                document.querySelectorAll('.btn-tab-rainbow').forEach(b => {
+                    b.classList.remove('active');
                 });
                 document.querySelectorAll('.tab-content').forEach(c => {
                     c.classList.remove('active');
@@ -812,7 +2332,7 @@
                 const selectedContent = document.getElementById(`content-${tab}`);
 
                 if (selectedTab && selectedContent) {
-                    selectedTab.classList.add('active', 'text-indigo-600', 'border-b-2', 'border-indigo-600');
+                    selectedTab.classList.add('active');
                     selectedContent.classList.add('active');
                     selectedContent.classList.remove('hidden');
                 }
@@ -981,7 +2501,7 @@
 
                 document.getElementById('loadingStatus').innerText = 'กำลังโหลด OCR Engine...';
 
-                const worker = await Tesseract.createWorker('eng', 1, {
+                const worker = await Tesseract.createWorker('tha+eng', 1, {
                     logger: m => {
                         if (m.status === 'recognizing text') {
                             const pct = (m.progress * 100).toFixed(0);
@@ -1043,6 +2563,11 @@
                 // Final result
                 log(`=== ผลลัพธ์: ${data.words.length} คำ, confidence ${data.confidence.toFixed(1)}% ===`, 'info', 'debugLog');
                 logPreview('FINAL', text);
+
+                if (text) {
+                    document.getElementById('ocrResultText').value = text;
+                    document.getElementById('ocrResultContainer').classList.remove('hidden');
+                }
 
                 if (!text) {
                     log('ไม่พบข้อความ — ลองครอปภาพให้เห็นเฉพาะตาราง หรือใช้ภาพที่ชัดขึ้น', 'error', 'debugLog');
@@ -1120,7 +2645,7 @@
                     margin: [0, 0, 0, 0], // Top, Left, Bottom, Right
                     filename: `ใบเบิกโอที_TPN_${document.getElementById('targetMonth').value}.pdf`,
                     image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0, scale: 2, windowWidth: 794 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0, windowWidth: 794 },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
                 await html2pdf().set(opt).from(clone).save();
@@ -1308,6 +2833,18 @@
             });
 
             generateTable();
+        });
+    </script>
+
+    <!-- UI Enhancement Script (no logic changes) -->
+    <script>
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('scrollTop');
+            if (btn) btn.classList.toggle('visible', window.scrollY > 300);
+        });
+        document.addEventListener('mousemove', (e) => {
+            document.body.style.setProperty('--mouse-x', e.clientX + 'px');
+            document.body.style.setProperty('--mouse-y', e.clientY + 'px');
         });
     </script>
 </body>
