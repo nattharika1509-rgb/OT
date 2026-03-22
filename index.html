@@ -1893,15 +1893,16 @@
             <div id="printableArea" class="a4-paper text-black">
                 <div class="flex justify-between items-start mb-2">
                     <div class="relative group cursor-pointer"
-                        onclick="document.getElementById('logoUploader').click()">
+                        onclick="document.getElementById('logoUploader').click()"
+                        title="คลิกเพื่ออัปโหลดโลโก้ใหม่">
                         <input type="file" id="logoUploader" accept="image/*" class="hidden"
                             onchange="updateLogo(event)">
                         <img id="tpnLogo" src="Logo.png" style="max-height: 45px; width: auto;" alt="TPN Logo"
-                            class="h-16 object-contain">
+                            class="h-16 object-contain" onerror="this.style.display='none'; document.getElementById('tpnTextLogo').classList.remove('hidden');">
                         <div id="tpnTextLogo" class="hidden">
-                            <span class="text-xs">ที่ บมจ. ทีพีเอ็น</span>
+                            <span class="text-xs font-bold text-gray-800">ที่ บมจ. ทีพีเอ็น</span>
                         </div>
-                        <img id="tpnLogoMobile" src="Logo.png" class="hidden">
+                        <img id="tpnLogoMobile" src="Logo.png" class="hidden" onerror="this.style.display='none';">
 
                     </div>
                     <div class="text-center flex-1">
@@ -2846,6 +2847,118 @@
             document.body.style.setProperty('--mouse-x', e.clientX + 'px');
             document.body.style.setProperty('--mouse-y', e.clientY + 'px');
         });
+    </script>
+
+    <!-- New Camera Feature Appended (Added natively without modifying original UI nodes) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Rename existing 'Send to Paste' button to 'Auto-Fill' to match user intent
+            const pasteBtnText = document.querySelector('button[onclick="sendOcrToPaste()"] .text_button');
+            if(pasteBtnText) {
+                pasteBtnText.innerHTML = "กรอกข้อมูลลงตารางอัตโนมัติ";
+            }
+            
+            // 2. Add Camera UI to the scan tab securely
+            const scanTab = document.getElementById('content-scan');
+            if(scanTab) {
+                const cameraUI = document.createElement('div');
+                cameraUI.className = 'mb-6';
+                cameraUI.innerHTML = `
+                    <div id="cameraSection" class="border-2 border-teal-700/60 rounded-xl p-5 text-center bg-slate-800/80 shadow-inner">
+                        <button id="startCameraBtn" class="btn-spark py-3 px-4 rounded-xl shadow-lg transition-all w-full">
+                            <div class="dots_border"></div>
+                            <i class="fas fa-camera sparkle-icon text-xl mr-1"></i>
+                            <span class="text_button text-sm tracking-wide">เปิดกล้องถ่ายภาพเอกสาร / ใบเบิก</span>
+                        </button>
+                        <div id="videoContainer" class="hidden relative mt-2 animate-in">
+                            <video id="cameraVideo" autoplay playsinline class="w-full max-h-72 object-cover rounded-xl border-2 border-teal-500 mb-4 shadow-lg"></video>
+                            <canvas id="cameraCanvas" class="hidden"></canvas>
+                            <div class="flex gap-3">
+                                <button id="captureCameraBtn" class="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 border border-red-400/30">
+                                    <div class="w-4 h-4 rounded-full bg-white animate-pulse shadow-[0_0_10px_white]"></div> ถ่ายรูป
+                                </button>
+                                <button id="closeCameraBtn" class="bg-slate-700 hover:bg-slate-600 text-white py-3 px-5 rounded-xl shadow-lg transition-colors border border-slate-500/30">
+                                    <i class="fas fa-times"></i> ปิดกล้อง
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                // Insert right at the top of the scan tab
+                scanTab.insertBefore(cameraUI, scanTab.firstChild);
+
+                // 3. Camera Logic Execution
+                let stream = null;
+                const video = document.getElementById('cameraVideo');
+                const canvas = document.getElementById('cameraCanvas');
+                
+                document.getElementById('startCameraBtn').addEventListener('click', async () => {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                        video.srcObject = stream;
+                        document.getElementById('videoContainer').classList.remove('hidden');
+                        document.getElementById('startCameraBtn').classList.add('hidden');
+                    } catch(err) {
+                        alert("ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบสิทธิ์การเข้าถึงกล้องของคุณ\\n" + err.message);
+                    }
+                });
+
+                document.getElementById('closeCameraBtn').addEventListener('click', () => {
+                    if(stream) stream.getTracks().forEach(t => t.stop());
+                    document.getElementById('videoContainer').classList.add('hidden');
+                    document.getElementById('startCameraBtn').classList.remove('hidden');
+                });
+
+                document.getElementById('captureCameraBtn').addEventListener('click', () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    
+                    canvas.toBlob((blob) => {
+                        const file = new File([blob], "camera_capture.jpg", { type: "image/jpeg" });
+                        
+                        // Assign to existing global variable for startOCR()
+                        window.uploadedImageFile = file;
+                        const preview = document.getElementById('imagePreview');
+                        preview.src = URL.createObjectURL(file);
+                        document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                        
+                        const scanBtn = document.getElementById('scanBtn');
+                        scanBtn.disabled = false;
+                        scanBtn.className = 'w-full mt-4 btn-spark py-3 rounded-xl shadow-lg transition-all';
+                        
+                        if(typeof window.log === 'function') window.log('ถ่ายรูปสำเร็จ: พร้อมให้ AI สแกนข้อความ', 'success', 'debugLog');
+                        
+                        // Stop camera automatically after capture
+                        document.getElementById('closeCameraBtn').click();
+                    }, 'image/jpeg', 0.95);
+                });
+            }
+        });
+
+        // 4. Added missing updateLogo function to fix custom logo uploader
+        function updateLogo(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const logo1 = document.getElementById('tpnLogo');
+                    const logo2 = document.getElementById('tpnLogoMobile');
+                    const textLogo = document.getElementById('tpnTextLogo');
+                    
+                    if(logo1) { 
+                        logo1.src = e.target.result; 
+                        logo1.style.display = 'block'; 
+                    }
+                    if(logo2) { 
+                        logo2.src = e.target.result; 
+                        logo2.style.display = 'block'; 
+                    }
+                    if(textLogo) textLogo.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
     </script>
 </body>
 
