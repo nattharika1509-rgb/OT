@@ -1897,8 +1897,8 @@
                         title="คลิกเพื่ออัปโหลดโลโก้ใหม่">
                         <input type="file" id="logoUploader" accept="image/*" class="hidden"
                             onchange="updateLogo(event)">
-                        <img id="tpnLogo" src="Logo.png" style="max-height: 45px; width: auto;" alt="TPN Logo"
-                            class="h-16 object-contain" onerror="this.style.display='none'; document.getElementById('tpnTextLogo').classList.remove('hidden');">
+                        <img id="tpnLogo" src="Logo.png" style="max-height: 60px; width: auto;" alt="TPN Logo"
+                            class="object-contain" onerror="this.style.display='none'; document.getElementById('tpnTextLogo').classList.remove('hidden');">
                         <div id="tpnTextLogo" class="hidden">
                             <span class="text-xs font-bold text-gray-800">ที่ บมจ. ทีพีเอ็น</span>
                         </div>
@@ -2345,10 +2345,7 @@
             const el = document.getElementById(target);
             el.innerHTML += `<div class="text-${type === 'success' ? 'green' : 'gray'}-400 border-b border-gray-700/50 pb-1 font-mono">${msg}</div>`;
         }
-        function updateLogo(e) {
-            const f = e.target.files[0];
-            if (f) { const r = new FileReader(); r.onload = x => { document.getElementById('tpnLogo').src = x.target.result; document.getElementById('tpnLogo').classList.remove('hidden'); document.getElementById('tpnTextLogo').classList.add('hidden'); }; r.readAsDataURL(f); }
-        }
+
         function updateTableBtn() { generateTable(); document.getElementById('toast').className = "show"; setTimeout(() => document.getElementById('toast').className = "", 3000); }
 
         function fillRow(day, times) {
@@ -2622,11 +2619,15 @@
             try {
                 const originalElement = document.getElementById('printableArea');
                 const clone = originalElement.cloneNode(true);
-                // Force remove margins and shadow so PDF doesn't include it in width calc
+                // Use exact A4 dimensions
                 clone.style.margin = '0';
+                clone.style.padding = '10mm 15mm'; 
                 clone.style.boxShadow = 'none';
                 clone.style.transform = 'none';
-
+                clone.style.width = '210mm';
+                clone.style.minHeight = '297mm';
+                clone.style.boxSizing = 'border-box';
+                
                 const inputs = clone.querySelectorAll('input');
                 inputs.forEach(input => {
                     const span = document.createElement('span');
@@ -2636,17 +2637,21 @@
                     span.style.textAlign = input.classList.contains('text-center') ? 'center' : 'left';
                     if (input.parentNode) input.parentNode.replaceChild(span, input);
                 });
-                container.style.position = 'absolute';
-                container.style.top = '0'; container.style.left = '0';
-                container.style.zIndex = '-1000'; container.style.opacity = '0';
+                
+                // Fixed position prevents scroll-based cropping in html2canvas
+                container.style.position = 'fixed';
+                container.style.top = '0'; 
+                container.style.left = '0';
+                container.style.zIndex = '-1000'; 
+                container.style.opacity = '0';
                 container.appendChild(clone);
                 document.body.appendChild(container);
 
                 const opt = {
-                    margin: [0, 0, 0, 0], // Top, Left, Bottom, Right
+                    margin: 0,
                     filename: `ใบเบิกโอที_TPN_${document.getElementById('targetMonth').value}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0, windowWidth: 794 },
+                    image: { type: 'jpeg', quality: 1.0 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
                 await html2pdf().set(opt).from(clone).save();
@@ -2675,12 +2680,32 @@
                         <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
                         <style>
                             @page { mso-page-orientation: portrait; size: 21cm 29.7cm; margin: 1cm; }
-                            table { border-collapse: collapse; width: 100%; font-family: 'Sarabun', sans-serif; }
-                            th, td { border: 1px solid black; padding: 5px; text-align: center; }
+                            table { border-collapse: collapse; width: 100%; font-family: 'Sarabun', sans-serif; table-layout: fixed; }
+                            th, td { border: 1px solid black; padding: 5px; text-align: center; word-wrap: break-word; }
                             .no-border { border: none !important; }
                             .header { font-size: 14pt; font-weight: bold; }
                             .cell-border { border: 1px solid #000000 !important; }
                         </style>
+                        <!--[if gte mso 9]>
+                        <xml>
+                         <x:ExcelWorkbook>
+                          <x:ExcelWorksheets>
+                           <x:ExcelWorksheet>
+                            <x:Name>OT Request</x:Name>
+                            <x:WorksheetOptions>
+                             <x:Print>
+                              <x:ValidPrinterInfo/>
+                              <x:PaperSizeIndex>9</x:PaperSizeIndex>
+                              <x:HorizontalResolution>600</x:HorizontalResolution>
+                              <x:VerticalResolution>600</x:VerticalResolution>
+                             </x:Print>
+                             <x:FitToPage/>
+                            </x:WorksheetOptions>
+                           </x:ExcelWorksheet>
+                          </x:ExcelWorksheets>
+                         </x:ExcelWorkbook>
+                        </xml>
+                        <![endif]-->
                     \x3C/head\x3E
                     \x3Cbody\x3E
                         <table>
