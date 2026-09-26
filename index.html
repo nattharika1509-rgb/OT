@@ -2100,8 +2100,8 @@
         window.addEventListener('unhandledrejection', e => { if (e.reason?.isTrusted !== true) console.warn(e.reason); e.preventDefault(); });
 
         const SHIFT_PATTERN = [
-            { code: 'M1', name: 'เช้า 1', type: 'M', start: '07:00' }, { code: 'M2', name: 'เช้า 2', type: 'M', start: '07:00' }, { code: 'M3', name: 'เช้า 3', type: 'M', start: '07:00' },
-            { code: 'A1', name: 'บ่าย 1', type: 'A', start: '15:00' }, { code: 'A2', name: 'บ่าย 2', type: 'A', start: '15:00' }, { code: 'A3', name: 'บ่าย 3', type: 'A', start: '15:00' },
+            { code: 'M1', name: 'เช้า 1', type: 'M', start: '06:00' }, { code: 'M2', name: 'เช้า 2', type: 'M', start: '06:00' }, { code: 'M3', name: 'เช้า 3', type: 'M', start: '06:00' },
+            { code: 'A1', name: 'บ่าย 1', type: 'A', start: '14:00' }, { code: 'A2', name: 'บ่าย 2', type: 'A', start: '14:00' }, { code: 'A3', name: 'บ่าย 3', type: 'A', start: '14:00' },
             { code: 'Off1', name: 'หยุด 1', type: 'Off', start: null }, { code: 'Off2', name: 'หยุด 2', type: 'Off', start: null },
         ];
 
@@ -2141,13 +2141,13 @@
 
                 // Snap Logic (Bug #4 fixed: endRaw adjust for 3:00 cross-day)
                 let start = startRaw.clone(), end = endRaw.clone();
-                [7, 15, 19, 23, 3].forEach(h => {
+                [6, 14, 18, 22, 2].forEach(h => {
                     let target = startRaw.clone().hour(h).minute(0);
-                    if (h === 3 && startRaw.hour() > 20) target.add(1, 'd');
+                    if (h === 2 && startRaw.hour() > 20) target.add(1, 'd');
                     if (Math.abs(startRaw.diff(target, 'minutes')) <= 45) start = target;
 
                     let targetEnd = endRaw.clone().hour(h).minute(0);
-                    if (h === 3 && endRaw.hour() <= 5 && endRaw.date() !== moment(dateStr).date()) targetEnd.add(1, 'd');
+                    if (h === 2 && endRaw.hour() <= 5 && endRaw.date() !== moment(dateStr).date()) targetEnd.add(1, 'd');
                     if (Math.abs(endRaw.diff(targetEnd, 'minutes')) <= 45) end = targetEnd;
                 });
 
@@ -2159,8 +2159,8 @@
                 // กะ Off ข้าม Pipeline → คิด OT เต็มชั่วโมง (2 แรง)
                 const inHour = startRaw.hour();
                 const outHour = endRaw.hour();
-                const isDay12h = (startH === 7 || inHour === 6 || inHour === 7) && (end.hour() === 19 || outHour === 19) && dur >= 10.5;
-                const isNight12h = (startH === 19 || inHour === 18 || inHour === 19) && (end.hour() === 7 || outHour === 7) && dur >= 10.5 && end.date() !== start.date();
+                const isDay12h = (startH === 6 || inHour === 5 || inHour === 6) && (end.hour() === 18 || outHour === 18) && dur >= 10.5;
+                const isNight12h = (startH === 18 || inHour === 17 || inHour === 18) && (end.hour() === 6 || outHour === 6) && dur >= 10.5 && end.date() !== start.date();
 
                 if (isDay12h) {
                     isPipe = true;
