@@ -2983,17 +2983,17 @@
                             if (endRaw.isBefore(startRaw)) endRaw.add(1, 'd');
 
                             let start = startRaw.clone(), end = endRaw.clone();
-                            [7, 15, 19, 23, 3].forEach(h => {
+                            [6, 14, 18, 22, 2].forEach(h => {
                                 let target = startRaw.clone().hour(h).minute(0);
-                                if (h === 3 && startRaw.hour() > 20) target.add(1, 'd');
+                                if (h === 2 && startRaw.hour() > 20) target.add(1, 'd');
                                 if (Math.abs(startRaw.diff(target, 'minutes')) <= 45) start = target;
 
                                 let targetEnd = endRaw.clone().hour(h).minute(0);
-                                if (h === 3 && endRaw.hour() <= 5 && endRaw.date() !== moment(dateStr).date()) targetEnd.add(1, 'd');
+                                if (h === 2 && endRaw.hour() <= 5 && endRaw.date() !== moment(dateStr).date()) targetEnd.add(1, 'd');
                                 if (Math.abs(endRaw.diff(targetEnd, 'minutes')) <= 45) end = targetEnd;
                             });
 
-                            // ปรับเวลาเศษนาที เช่น 19:05, 06:57 ให้เป็นเวลามาตรฐาน 19:00, 07:00
+                            // ปรับเวลาเศษนาที เช่น 18:05, 05:57 ให้เป็นเวลามาตรฐาน 18:00, 06:00
                             formInTime = start.format('HH:mm');
                             formOutTime = end.format('HH:mm');
 
@@ -3003,15 +3003,15 @@
                             const endH = end.hour();
                             const dur = end.diff(start, 'hours', true);
 
-                            // กะเช้า / ทำงานช่วง 06.xx-07.xx ถึง 19.xx (12 ชม.): ในใบสร้างใบเบิกเปลี่ยนเป็น 15.00 ถึง 19.00 น.
-                            if ((startH === 7 || inH === 6 || inH === 7) && (endH === 19 || outH === 19 || outH === 18) && dur >= 10.5) {
-                                formInTime = '15:00';
-                                formOutTime = '19:00';
+                            // กะเช้า / ทำงานช่วง 05.xx-06.xx ถึง 18.xx (12 ชม.): ในใบสร้างใบเบิกเปลี่ยนเป็น 14.00 ถึง 18.00 น.
+                            if ((startH === 6 || inH === 5 || inH === 6) && (endH === 18 || outH === 18 || outH === 17) && dur >= 10.5) {
+                                formInTime = '14:00';
+                                formOutTime = '18:00';
                             }
-                            // กะดึก / ทำงานช่วง 18.xx-19.xx ถึง 07.xx วันถัดไป (12 ชม.): ในใบสร้างใบเบิกเปลี่ยนเป็น 03.00 ถึง 07.00 น.
-                            else if ((startH === 19 || inH === 18 || inH === 19) && (endH === 7 || outH === 7 || outH === 6) && dur >= 10.5 && end.date() !== start.date()) {
-                                formInTime = '03:00';
-                                formOutTime = '07:00';
+                            // กะดึก / ทำงานช่วง 17.xx-18.xx ถึง 06.xx วันถัดไป (12 ชม.): ในใบสร้างใบเบิกเปลี่ยนเป็น 02.00 ถึง 06.00 น.
+                            else if ((startH === 18 || inH === 17 || inH === 18) && (endH === 6 || outH === 6 || outH === 5) && dur >= 10.5 && end.date() !== start.date()) {
+                                formInTime = '02:00';
+                                formOutTime = '06:00';
                             }
                         }
 
